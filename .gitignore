@@ -7,6 +7,10 @@ backend/target/
 *.jar
 *.log
 
+# Runtime game data (ateliers persisted by the backend, see R-002)
+backend/ateliers/
+ateliers/
+
 # Node.js / Vite (frontend/)
 frontend/node_modules/
 frontend/dist/

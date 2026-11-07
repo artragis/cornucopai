@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/leg-schema.json",
+  "title": "Leg — one played card in a Cornucopia atelier (FR-007, FR-012)",
+  "description": "Each leg is persisted as its own JSON file named leg-{NNN}-{playerSlug}.json inside the atelier folder. Written with validation=PENDING and precisions=[] when the card is played, updated in place as precisions arrive, and finally flipped to VALIDATED or REJECTED after the vote.",
+  "type": "object",
+  "required": ["cardName", "scenario", "explanation", "precisions", "validation"],
+  "additionalProperties": false,
+  "properties": {
+    "cardName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the played card (placeholder deck in this increment)",
+      "example": "Carte-Placeholder-3"
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Threat scenario evoked by the player"
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The player's explanation of the scenario"
+    },
+    "precisions": {
+      "type": "array",
+      "description": "Precisions added by the other players and 'Je sais' answers to their questions (FR-009, FR-010). Empty list when the card is first played.",
+      "items": { "type": "string" },
+      "example": []
+    },
+    "validation": {
+      "type": "string",
+      "enum": ["PENDING", "VALIDATED", "REJECTED"],
+      "description": "PENDING when written, then VALIDATED iff strictly more than half of the voters (all players except the card player) answered yes, else REJECTED (FR-012, R-006)"
+    }
+  }
+}

@@ -1,0 +1,171 @@
+# API contract for the Cornucopia game flow (FR-001..FR-015)
+# Backend: Quarkus REST (Jakarta REST / JAX-RS) under /api/ateliers
+# The game runs synchronously on POST: with deterministic dumb players the whole
+# game completes immediately (research.md R-003).
+openapi: 3.0.3
+info:
+  title: CornucopAI Ateliers API
+  version: 0.2.0
+  description: >
+    Create and run a Cornucopia threat-modeling workshop played by AI agents.
+    The backend is the game master: it draws the turn order, asks each agent for
+    card/scenario/explanation, collects precisions and questions, runs the
+    validation vote, and persists one JSON file per leg on disk.
+paths:
+  /api/ateliers:
+    post:
+      summary: Configure and launch a game (FR-001..FR-004, FR-013)
+      operationId: createAtelier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAtelierRequest'
+            example:
+              playerCount: 4
+              featureHtml: "<p>Analyse de la feature <b>login OAuth2</b></p>"
+      responses:
+        '201':
+          description: Atelier created and game fully played; legs persisted on disk
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atelier'
+        '400':
+          description: Invalid request (playerCount < 2 or empty featureHtml)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List all ateliers (id, createdAt, playerCount)
+      operationId: listAteliers
+      responses:
+        '200':
+          description: List of atelier summaries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AtelierSummary'
+  /api/ateliers/{id}:
+    get:
+      summary: Full atelier detail including every leg with its validation status
+      operationId: getAtelier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: atelier2026-11-07-173000
+      responses:
+        '200':
+          description: Atelier detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atelier'
+        '404':
+          description: Unknown atelier id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    CreateAtelierRequest:
+      type: object
+      required: [playerCount, featureHtml]
+      properties:
+        playerCount:
+          type: integer
+          minimum: 2
+          description: Number of AI players (archetypes assigned round-robin, R-004)
+          example: 4
+        featureHtml:
+          type: string
+          minLength: 1
+          description: HTML from the WYSIWYG editor describing the feature to analyze
+          example: "<p>Analyse de la feature <b>login OAuth2</b></p>"
+    Archetype:
+      type: string
+      enum: [GRUMPY, HAPPY, GREEDY, PROF]
+    ValidationStatus:
+      type: string
+      enum: [PENDING, VALIDATED, REJECTED]
+    Participant:
+      type: object
+      required: [name, archetype]
+      properties:
+        name:
+          type: string
+          example: Joueur-1
+        archetype:
+          $ref: '#/components/schemas/Archetype'
+    Leg:
+      type: object
+      description: The 5-field JSON persisted per played card (contracts/leg-schema.json)
+      required: [cardName, scenario, explanation, precisions, validation]
+      properties:
+        cardName:
+          type: string
+          example: Carte-Placeholder-3
+        scenario:
+          type: string
+          example: "Un attaquant devine le mot de passe d'un compte admin"
+        explanation:
+          type: string
+        precisions:
+          type: array
+          items:
+            type: string
+        validation:
+          $ref: '#/components/schemas/ValidationStatus'
+    Atelier:
+      type: object
+      required: [id, createdAt, featureHtml, playerCount, players, turnOrder, legs]
+      properties:
+        id:
+          type: string
+          example: atelier2026-11-07-173000
+        createdAt:
+          type: string
+          format: date-time
+        featureHtml:
+          type: string
+        playerCount:
+          type: integer
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        turnOrder:
+          type: array
+          items:
+            type: string
+          description: Player names in the order drawn at the first turn (FR-005)
+        legs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Leg'
+    AtelierSummary:
+      type: object
+      required: [id, createdAt, playerCount]
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        playerCount:
+          type: integer
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "playerCount must be >= 2"
