@@ -1,0 +1,25 @@
+# Smoke contract for the bootstrap feature (FR-005)
+openapi: 3.0.3
+info:
+  title: CornucopAI smoke API
+  version: 0.1.0
+  description: Minimal endpoint proving the backend pipeline end-to-end at bootstrap.
+paths:
+  /api/health:
+    get:
+      summary: Liveness smoke check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Backend is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: UP
+              example:
+                status: UP

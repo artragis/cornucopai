@@ -1,10 +1,10 @@
 <!--
 Sync Impact Report:
-- Version change: 1.1.0 → 1.2.0 (MINOR: repository layout pinned in Technology &
-  Quality Standards; new "Project Diary" section added; no principles removed or
-  redefined)
+- Version change: 1.2.0 → 1.3.0 (MINOR: two standing rules added to Development
+  Workflow — CI on GitHub Actions, Quarkus debug mode always available; no
+  principles removed or redefined)
 - Modified principles: none (all five core principles preserved unchanged)
-- Added sections: Project Diary — Zeste de Savoir Billet
+- Added sections: none
 - Removed sections: none
 - Follow-up TODOs: none
 -->
@@ -72,7 +72,12 @@ Complexity MUST be justified in writing when it is introduced.
 - Code review is required for every merge. Reviewers MUST verify compliance with
   this constitution, not just correctness of the code.
 - Quality gates (tests, lint, type checks, coverage) MUST pass in CI before a
-  change can be merged.
+  change can be merged. CI runs on GitHub Actions (the project is exposed on
+  GitHub); workflows live in `.github/workflows/` and MUST run the same commands
+  as local development.
+- The Quarkus application MUST always remain launchable in debug mode (JDWP
+  debugger, e.g. port 5005 via `./mvnw quarkus:dev`) to facilitate development
+  and debugging. No build or configuration change may remove this ability.
 
 ## Project Diary — Zeste de Savoir Billet
 As decisions are made and lessons are learned throughout the project (LangChain4j
@@ -105,4 +110,4 @@ compliance with this constitution. Complexity beyond what the constitution
 requires MUST be justified. Runtime development guidance lives in the
 templates and workflows under `.specify/`.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-07 | **Last Amended**: 2026-11-07
+**Version**: 1.3.0 | **Ratified**: 2026-11-07 | **Last Amended**: 2026-11-07

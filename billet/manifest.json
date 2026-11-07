@@ -1,0 +1,6 @@
+{
+  "title": "CornucopAI — un playground d'agents IA autour de Cornucopia (threat modeling)",
+  "description": "Journal de bord du projet CornucopAI : bootstrapper un backend Quarkus/Java 25/LangChain4j et un frontend Vue 3/Vuetify avec un workflow spec-kit, et expérimenter des agents IA qui jouent à Cornucopia pour faire du threat modeling.",
+  "type": "OPINION",
+  "licence": "CC BY"
+}
