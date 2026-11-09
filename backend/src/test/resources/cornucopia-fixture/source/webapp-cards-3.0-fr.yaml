@@ -1,0 +1,39 @@
+---
+meta:
+  edition: "webapp"
+  component: "cards"
+  language: "fr"
+  version: "3.0"
+suits:
+- 
+  id: "VE"
+  name: "VALIDATION & ENCODAGE DES DONNEES"
+  cards:
+    - 
+      id: "VE2"
+      value: "2"
+      desc: "Robert peut saisir des données malveillantes car le format autorisé n'est pas vérifié"
+    - 
+      id: "VE3"
+      value: "3"
+      desc: "Dave peut saisir des noms de champs malveillants"
+- 
+  id: "AT"
+  name: "AUTHENTIFICATION"
+  cards:
+    - 
+      id: "AT2"
+      value: "2"
+      desc: "Un attaquant peut essayer un identifiant après l'autre"
+    - 
+      id: "ATJ"
+      value: "J"
+      desc: "Un attaquant peut voler les identifiants stockés sur le client"
+- 
+  id: "WC"
+  name: "JOKER"
+  cards:
+    - 
+      id: "WCA"
+      value: "A"
+      desc: "Vous avez inventé une nouvelle attaque webapp"

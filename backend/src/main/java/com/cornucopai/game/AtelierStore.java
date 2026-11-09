@@ -89,7 +89,10 @@ public class AtelierStore {
         try {
             return Optional.of(mapper.readValue(file.toFile(), Atelier.class));
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            // Legacy or corrupted atelier files (e.g. feature 002 wrote deck as
+            // List<String>; spec 003 expects List<Card>) must not break listing.
+            LOG.warnf("Skipping unreadable atelier %s: %s", atelierId, e.getMessage());
+            return Optional.empty();
         }
     }
 
@@ -103,6 +106,7 @@ public class AtelierStore {
             return files.filter(p -> p.getFileName().toString().startsWith("leg-"))
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                     .map(this::readLeg)
+                    .filter(java.util.Objects::nonNull)
                     .toList();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -136,7 +140,8 @@ public class AtelierStore {
         try {
             return mapper.readValue(file.toFile(), Leg.class);
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            LOG.warnf("Skipping unreadable leg file %s: %s", file, e.getMessage());
+            return null;
         }
     }
 

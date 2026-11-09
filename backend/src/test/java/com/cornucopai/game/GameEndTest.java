@@ -1,5 +1,6 @@
 package com.cornucopai.game;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
@@ -32,13 +33,19 @@ class GameEndTest {
         return new AtelierStore(tempDir, mapper);
     }
 
-    private Atelier newAtelier(String id, List<Participant> players, List<String> deck) {
+    private Atelier newAtelier(String id, List<Participant> players, List<Card> deck) {
         return new Atelier(id, Instant.parse("2026-11-07T17:30:00Z"), "<p>feature</p>",
                 players.size(), players, List.of(), deck);
     }
 
+    private List<Card> cards(String... ids) {
+        return java.util.Arrays.stream(ids)
+                .map(id -> new Card(id, id, "test", "T", "Test suit", "en", "desc for " + id, null, null))
+                .toList();
+    }
+
     private GameMaster gameMaster(AtelierStore store) {
-        return new GameMaster(store, new PlaceholderCards(new Random(7)), new Random(7));
+        return new GameMaster(store, new Random(7));
     }
 
     @Test
@@ -47,7 +54,7 @@ class GameEndTest {
         String id = store.createAtelierDir(store.newAtelierId());
         List<Participant> players = List.of(
                 new Participant("Joueur-1", Archetype.GRUMPY), new Participant("Joueur-2", Archetype.HAPPY));
-        List<String> deck = List.of("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8");
+        List<Card> deck = cards("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8");
         List<PlayerAgent> agents = List.of(
                 new com.cornucopai.game.agent.GrumpyAgent("Joueur-1"),
                 new com.cornucopai.game.agent.HappyAgent("Joueur-2"));
@@ -75,7 +82,7 @@ class GameEndTest {
                 new Participant("A", Archetype.HAPPY),
                 new Participant("B", Archetype.HAPPY),
                 new Participant("C", Archetype.HAPPY));
-        List<String> deck = List.of("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"); // hands: 3,3,2
+        List<Card> deck = cards("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"); // hands: 3,3,2
         List<PlayerAgent> agents = List.of(
                 new com.cornucopai.game.agent.HappyAgent("A"),
                 new com.cornucopai.game.agent.HappyAgent("B"),

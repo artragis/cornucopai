@@ -17,7 +17,7 @@ onMounted(async () => {
   }
 })
 
-async function onLaunch(payload: { playerCount: number; featureHtml: string }) {
+async function onLaunch(payload: { playerCount: number; featureHtml: string; language: string; families: string[] }) {
   loading.value = true
   error.value = ''
   try {

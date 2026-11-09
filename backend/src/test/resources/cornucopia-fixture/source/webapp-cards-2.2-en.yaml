@@ -1,0 +1,15 @@
+---
+meta:
+  edition: "webapp"
+  component: "cards"
+  language: "EN"
+  version: "2.2"
+suits:
+- 
+  id: "VE"
+  name: "DATA VALIDATION & ENCODING"
+  cards:
+    - 
+      id: "VE2"
+      value: "2"
+      desc: "OLD 2.2 description that must be ignored (latest version wins)"

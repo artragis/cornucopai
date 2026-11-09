@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/atelier-schema.json",
+  "title": "Atelier — persisted as atelier.json inside atelier{yyyyMMdd-HHmmss}/ (spec 002 R-002, spec 003 R-016, spec 004 FR-012)",
+  "description": "Extended by spec 004: adds `agentConfigs`, the resolved per-player LLM provider configs (OPENAI_COMPATIBLE baseUrl/apiKey/modelName or ACP acpProvider), index-aligned with `players`. Spec 003 fields (language, selectedFamilies, sets, deck of full Card objects) are unchanged.",
+  "type": "object",
+  "required": ["id", "createdAt", "featureHtml", "playerCount", "players", "turnOrder", "language", "selectedFamilies", "deck", "sets", "agentConfigs"],
+  "properties": {
+    "id": { "type": "string", "example": "atelier2026-11-08-091500" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "featureHtml": { "type": "string" },
+    "playerCount": { "type": "integer", "minimum": 2 },
+    "players": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "archetype"],
+        "properties": {
+          "name": { "type": "string", "example": "Joueur-1" },
+          "archetype": { "type": "string", "enum": ["GRUMPY", "HAPPY", "GREEDY", "PROF"] }
+        }
+      }
+    },
+    "turnOrder": { "type": "array", "items": { "type": "string" } },
+    "language": { "type": "string", "description": "Chosen language, lowercase, default fr", "example": "fr" },
+    "selectedFamilies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "example": "webapp:VE" },
+      "description": "Selected families as setId:familyId pairs (spec 003 FR-005)"
+    },
+    "deck": {
+      "type": "array",
+      "description": "Real dealt cards — full Card objects; id + description are persisted here (spec 003 R-016)",
+      "items": { "$ref": "#/definitions/Card" }
+    },
+    "sets": {
+      "type": "array",
+      "description": "Resolved language per set used in this game (spec 003 FR-017)",
+      "items": {
+        "type": "object",
+        "required": ["id", "resolvedLanguage"],
+        "properties": {
+          "id": { "type": "string", "example": "webapp" },
+          "resolvedLanguage": { "type": "string", "example": "fr" }
+        }
+      }
+    },
+    "agentConfigs": {
+      "type": "array",
+      "description": "Resolved per-player LLM configs (spec 004 FR-012), index-aligned with `players`. Default when the request had no `agents`: OPENAI_COMPATIBLE with baseUrl http://localhost:1235/v1 and no apiKey (FR-002).",
+      "items": { "$ref": "#/definitions/AgentLlmConfig" }
+    },
+    "finishedAt": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "definitions": {
+    "Card": {
+      "type": "object",
+      "required": ["id", "value", "setId", "suitId", "suitName", "language", "description"],
+      "properties": {
+        "id": { "type": "string", "example": "VE2" },
+        "value": { "type": "string", "example": "2" },
+        "setId": { "type": "string", "example": "webapp" },
+        "suitId": { "type": "string", "example": "VE" },
+        "suitName": { "type": "string", "example": "DATA VALIDATION & ENCODING" },
+        "language": { "type": "string", "example": "fr" },
+        "description": { "type": "string" },
+        "url": { "type": ["string", "null"] },
+        "misc": { "type": ["string", "null"] }
+      }
+    },
+    "AgentLlmConfig": {
+      "type": "object",
+      "required": ["providerType"],
+      "properties": {
+        "providerType": { "type": "string", "enum": ["OPENAI_COMPATIBLE", "ACP"] },
+        "baseUrl": {
+          "type": ["string", "null"],
+          "description": "OpenAI-compatible base URL; required (non-blank) when providerType=OPENAI_COMPATIBLE",
+          "example": "http://localhost:1235/v1"
+        },
+        "apiKey": { "type": ["string", "null"], "description": "Optional; null/empty = no authentication (default, FR-002)" },
+        "modelName": { "type": ["string", "null"], "description": "Model name; may be null/empty (server-dependent, R-028)" },
+        "acpProvider": { "type": ["string", "null"], "enum": ["github-copilot", "mistral-vibe", null], "description": "Required when providerType=ACP" },
+        "command": { "type": ["string", "null"], "description": "Optional CLI override for the ACP provider (test seam)" }
+      }
+    }
+  }
+}

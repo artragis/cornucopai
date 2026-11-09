@@ -1,0 +1,46 @@
+---
+meta:
+  edition: "webapp"
+  component: "mappings"
+  language: "ALL"
+  version: "3.0"
+url_templates:
+  capec: '/taxonomy/capec-3.9/{code}'
+  stride: '/taxonomy/stride/{code}'
+labels:
+  capec: 'CAPEC™'
+  stride: 'STRIDE'
+  owasp_asvs: 'OWASP ASVS (v5.0)'
+suits:
+- 
+  id: "VE"
+  name: "DATA VALIDATION & ENCODING"
+  cards:
+    - 
+      id: "VE2"
+      value: "2"
+      url: "https://cornucopia.owasp.org/cards/VE2"
+      stride: [ I ]
+      stride_print: [ 'Information Disclosure' ]
+      owasp_asvs: [ 2.4.1, 4.3.2, 13.2.2 ]
+      owasp_asvs_print: [ 2.4.1, 4.3.2, 13.2.2 ]
+      owasp_dev_guide: [ SC1, SC2, SC3 ]
+      owasp_dev_guide_print: [ SC1-3 ]
+      capec: [ 54, 113, 116 ]
+    - 
+      id: "VE3"
+      value: "3"
+      url: "https://cornucopia.owasp.org/cards/VE3"
+      stride: [ T ]
+      stride_print: [ 'Tampering' ]
+      owasp_asvs: [ 13.2.2, 13.4.1 ]
+      capec: [ 113 ]
+- 
+  id: "AT"
+  name: "AUTHENTICATION"
+  cards:
+    - 
+      id: "AT2"
+      value: "2"
+      stride: [ S ]
+      capec: [ 21, 652 ]

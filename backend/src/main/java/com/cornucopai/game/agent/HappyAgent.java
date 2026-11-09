@@ -1,5 +1,6 @@
 package com.cornucopai.game.agent;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Leg;
 import com.cornucopai.game.model.Participant;
@@ -9,6 +10,10 @@ import com.cornucopai.game.model.Vote;
 
 /**
  * Happy (spec US-4): always votes YES, never has a question nor a precision.
+  . " *
+ * <p>Spec 004 (FR-003): deterministic agent kept for UNIT TESTS ONLY — games use LlmPlayerAgent.
+" *
+ * <p>Spec 004 (FR-003): deterministic agent kept for UNIT TESTS ONLY — games use LlmPlayerAgent.
  */
 public class HappyAgent extends AbstractAgent {
 
@@ -22,8 +27,9 @@ public class HappyAgent extends AbstractAgent {
     }
 
     @Override
-    public PlayedCard playCard(String card, String featureHtml) {
-        return new PlayedCard(card, "Un scénario sans gravité", "Tout va bien se passer, je suis sûr.");
+    public PlayedCard playCard(Card card, String featureHtml) {
+        return new PlayedCard(card.id(), "Un scénario sans gravité (" + card.suitName() + ")",
+                "Tout va bien se passer, je suis sûr. " + card.description());
     }
 
     @Override

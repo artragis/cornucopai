@@ -1,5 +1,6 @@
 package com.cornucopai.game;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
@@ -30,6 +31,10 @@ class AtelierStoreTest {
         return new AtelierStore(tempDir, mapper);
     }
 
+    private static Card card(String id) {
+        return new Card(id, "2", "webapp", "VE", "DATA VALIDATION & ENCODING", "en", "desc for " + id, null, null);
+    }
+
     @Test
     void atelierIdUsesDashesAndNoColons() {
         String id = store().newAtelierId();
@@ -57,7 +62,7 @@ class AtelierStoreTest {
                 List.of(new Participant("Joueur-1", Archetype.GRUMPY),
                         new Participant("Joueur-2", Archetype.HAPPY)),
                 List.of("Joueur-2", "Joueur-1"),
-                List.of("Carte-Placeholder-1", "Carte-Placeholder-2"));
+                List.of(card("VE2"), card("AT2")));
         store.saveAtelier(id, atelier);
 
         assertThat(store.loadAtelier(id)).isPresent();
@@ -140,5 +145,32 @@ class AtelierStoreTest {
     @Test
     void slugLowercasesAndReplacesNonAlnum() {
         assertThat(AtelierStore.slug("Joueur-1")).isEqualTo("joueur-1");
+    }
+
+    @Test
+    void legacyAtelierWithStringDeckIsSkippedNotFatal() throws Exception {
+        AtelierStore store = store();
+        String legacyId = store.createAtelierDir("atelier2026-11-07-100000");
+        // Simulate a feature-002 atelier.json where deck was List<String>
+        Files.writeString(tempDir.resolve(legacyId).resolve("atelier.json"), """
+                {
+                  "id": "atelier2026-11-07-100000",
+                  "createdAt": "2026-11-07T10:00:00Z",
+                  "featureHtml": "<p>old</p>",
+                  "playerCount": 2,
+                  "players": [],
+                  "turnOrder": [],
+                  "deck": ["Carte-Placeholder-1", "Carte-Placeholder-2"]
+                }
+                """);
+        String goodId = store.createAtelierDir("atelier2026-11-08-100000");
+        store.saveAtelier(goodId, new Atelier(goodId, Instant.parse("2026-11-08T10:00:00Z"), "new", 2,
+                List.of(), List.of(), List.of(card("VE2"))));
+
+        // loadAtelier on the legacy file returns empty instead of throwing
+        assertThat(store.loadAtelier(legacyId)).isEmpty();
+        // listAteliers skips the legacy file and still returns the good one
+        List<Atelier> ateliers = store.listAteliers();
+        assertThat(ateliers).extracting(Atelier::id).containsExactly(goodId);
     }
 }

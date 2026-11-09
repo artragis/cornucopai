@@ -1,5 +1,6 @@
 package com.cornucopai.game.agent;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Leg;
 import com.cornucopai.game.model.Participant;
@@ -10,6 +11,10 @@ import com.cornucopai.game.model.Vote;
 /**
  * Greedy (spec US-4): gives an excessively long explanation, adds excessively
  * long precisions, votes YES for Happy and NO for Grumpy.
+  . " *
+ * <p>Spec 004 (FR-003): deterministic agent kept for UNIT TESTS ONLY — games use LlmPlayerAgent.
+" *
+ * <p>Spec 004 (FR-003): deterministic agent kept for UNIT TESTS ONLY — games use LlmPlayerAgent.
  */
 public class GreedyAgent extends AbstractAgent {
 
@@ -25,9 +30,10 @@ public class GreedyAgent extends AbstractAgent {
     }
 
     @Override
-    public PlayedCard playCard(String card, String featureHtml) {
-        String longExplanation = "Explication beaucoup trop longue : " + LONG_FILLER.repeat(30);
-        return new PlayedCard(card, "Un scénario qui en dit long", longExplanation);
+    public PlayedCard playCard(Card card, String featureHtml) {
+        String longExplanation = "Explication beaucoup trop longue : " + LONG_FILLER.repeat(30)
+                + " Carte " + card.id() + " : " + card.description();
+        return new PlayedCard(card.id(), "Un scénario qui en dit long (" + card.suitName() + ")", longExplanation);
     }
 
     @Override

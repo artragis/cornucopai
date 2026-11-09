@@ -1,5 +1,6 @@
 package com.cornucopai.game;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Answer;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Leg;
@@ -19,8 +20,8 @@ public interface PlayerAgent {
 
     Archetype archetype();
 
-    /** FR-006: the current player gives the card, a scenario and an explanation. */
-    PlayedCard playCard(String card, String featureHtml);
+    /** FR-006: the current player plays a real {@link Card} (id + description) with a scenario and an explanation (R-016). */
+    PlayedCard playCard(Card card, String featureHtml);
 
     /**
      * FR-008/FR-010: what this agent does when another player's leg is on the table.

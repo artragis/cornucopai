@@ -1,5 +1,6 @@
 package com.cornucopai.game;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Answer;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Atelier;
@@ -60,10 +61,10 @@ class GameMasterTest {
         }
 
         @Override
-        public PlayedCard playCard(String card, String featureHtml) {
-            playedCards.add(card);
+        public PlayedCard playCard(Card card, String featureHtml) {
+            playedCards.add(card.id());
             playSequence.add(name);
-            return new PlayedCard(card, "scenario by " + name, "explanation by " + name);
+            return new PlayedCard(card.id(), "scenario by " + name, "explanation by " + name);
         }
 
         @Override
@@ -88,13 +89,21 @@ class GameMasterTest {
         return new AtelierStore(tempDir, mapper);
     }
 
-    private Atelier newAtelier(String id, List<Participant> players, List<String> deck) {
+    private Atelier newAtelier(String id, List<Participant> players, List<Card> deck) {
         return new Atelier(id, Instant.parse("2026-11-07T17:30:00Z"), "<p>feature</p>",
                 players.size(), players, List.of(), deck);
     }
 
-    private List<String> deck8() {
-        return List.of("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8");
+    private List<Card> cards(String... ids) {
+        List<Card> out = new ArrayList<>();
+        for (String id : ids) {
+            out.add(new Card(id, id, "test", "T", "Test suit", "en", "desc for " + id, null, null));
+        }
+        return out;
+    }
+
+    private List<Card> deck8() {
+        return cards("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8");
     }
 
     private List<Participant> participants(String... names) {
@@ -106,7 +115,7 @@ class GameMasterTest {
     }
 
     private GameMaster gameMaster() {
-        return new GameMaster(store(), new PlaceholderCards(new Random(42)), new Random(42));
+        return new GameMaster(store(), new Random(42));
     }
 
     private List<PlayerAgent> agents(List<StubAgent> stubs) {
@@ -147,7 +156,7 @@ class GameMasterTest {
         AtelierStore store = store();
         String id = store.createAtelierDir(store.newAtelierId());
         List<Participant> players = participants("A", "B", "C");
-        Atelier atelier = newAtelier(id, players, List.of("c1", "c2"));
+        Atelier atelier = newAtelier(id, players, cards("c1", "c2"));
         List<StubAgent> agents = List.of(new StubAgent("A", new ArrayList<>()), new StubAgent("B", new ArrayList<>()), new StubAgent("C", new ArrayList<>()));
         // A always YES, B and C always NO → each leg has 2 voters with at most 1 yes → never strictly more than half → REJECTED
         agents.get(0).votes.addAll(List.of(Vote.YES, Vote.YES, Vote.YES));
@@ -166,7 +175,7 @@ class GameMasterTest {
         AtelierStore store = store();
         String id = store.createAtelierDir(store.newAtelierId());
         List<Participant> players = participants("A", "B");
-        Atelier atelier = newAtelier(id, players, List.of("c1"));
+        Atelier atelier = newAtelier(id, players, cards("c1"));
         StubAgent a = new StubAgent("A", new ArrayList<>());
         StubAgent b = new StubAgent("B", new ArrayList<>());
         // symmetric scripts: whoever is NOT the card player asks a question, and the card player answers "Je sais"
@@ -191,7 +200,7 @@ class GameMasterTest {
         AtelierStore store = store();
         String id = store.createAtelierDir(store.newAtelierId());
         List<Participant> players = participants("A", "B");
-        Atelier atelier = newAtelier(id, players, List.of("c1"));
+        Atelier atelier = newAtelier(id, players, cards("c1"));
         StubAgent a = new StubAgent("A", new ArrayList<>());
         StubAgent b = new StubAgent("B", new ArrayList<>());
         // symmetric: the non-card player asks, the card player does not know, the asker is re-asked (no questions) and precises
@@ -217,7 +226,7 @@ class GameMasterTest {
         AtelierStore store = store();
         String id = store.createAtelierDir(store.newAtelierId());
         List<Participant> players = participants("A", "B");
-        Atelier atelier = newAtelier(id, players, List.of("c1"));
+        Atelier atelier = newAtelier(id, players, cards("c1"));
         StubAgent a = new StubAgent("A", new ArrayList<>());
         StubAgent b = new StubAgent("B", new ArrayList<>());
         a.reactions.add(new Reaction.Question("Q1-A"));
@@ -236,7 +245,7 @@ class GameMasterTest {
         AtelierStore store = store();
         String id = store.createAtelierDir(store.newAtelierId());
         List<Participant> players = participants("A", "B", "C");
-        Atelier atelier = newAtelier(id, players, List.of("c1"));
+        Atelier atelier = newAtelier(id, players, cards("c1"));
         List<StubAgent> agents = List.of(new StubAgent("A", new ArrayList<>()), new StubAgent("B", new ArrayList<>()), new StubAgent("C", new ArrayList<>()));
         // everyone votes YES by default → VALIDATED (2 yes of 2 voters)
 

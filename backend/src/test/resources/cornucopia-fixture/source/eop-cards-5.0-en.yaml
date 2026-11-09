@@ -1,0 +1,20 @@
+---
+meta:
+  edition: "eop"
+  component: "cards"
+  language: "EN"
+  version: "5.0"
+suits:
+- 
+  id: "SP"
+  name: "Spoofing"
+  cards:
+    - 
+      id: "SP2"
+      value: "2"
+      desc: "An attacker could take over the port or socket that the server normally uses"
+    - 
+      id: "SPA"
+      value: "A"
+      desc: "You have invented a new Spoofing attack"
+      misc: "Read more about this topic ..."

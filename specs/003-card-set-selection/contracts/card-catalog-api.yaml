@@ -1,0 +1,96 @@
+# API contract for the card catalog (FR-002, FR-003, FR-014, R-013, R-014)
+# Backend: Quarkus REST under /api/card-catalog
+# The catalog is scanned once from <CORNUCOPIA_HOME>/source/ (R-012, R-019) and
+# cached; latest version per edition only; structure parsed from the "en" file.
+openapi: 3.0.3
+info:
+  title: CornucopAI Card Catalog API
+  version: 0.3.0
+  description: >
+    Lists the Cornucopia card sets (one per edition, latest version) and their
+    families (suits) with the languages available, to feed the hierarchical
+    set → familles selector in the game creator. If CORNUCOPIA_HOME is unset/invalid,
+    the catalog is empty (FR-011).
+paths:
+  /api/card-catalog:
+    get:
+      summary: Get the card catalog (sets, families, available languages)
+      operationId: getCardCatalog
+      responses:
+        '200':
+          description: Card catalog. Empty sets[] when the Cornucopia repo is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardCatalog'
+              example:
+                availableLanguages: [en, es, fa, fr, hi, it, nl, ru, uk]
+                sets:
+                  - id: webapp
+                    version: "3.0"
+                    languages: [en, es, fa, fr, hi, it, nl, ru, uk]
+                    totalCards: 55
+                    families:
+                      - { id: VE, name: "DATA VALIDATION & ENCODING", cardCount: 14 }
+                      - { id: AT, name: "AUTHENTICATION", cardCount: 12 }
+                      - { id: WC, name: "WILD CARD", cardCount: 2 }
+                  - id: eop
+                    version: "5.0"
+                    languages: [en, es, fa, ru]
+                    totalCards: 38
+                    families:
+                      - { id: SP, name: "Spoofing", cardCount: 13 }
+                      - { id: TA, name: "Tampering", cardCount: 10 }
+components:
+  schemas:
+    CardCatalog:
+      type: object
+      required: [availableLanguages, sets]
+      properties:
+        availableLanguages:
+          type: array
+          description: All distinct language codes across sets, lowercase
+          items: { type: string }
+        sets:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetDto'
+    SetDto:
+      type: object
+      required: [id, version, languages, families, totalCards]
+      properties:
+        id:
+          type: string
+          description: Edition, e.g. webapp — only the latest version per edition is exposed (R-013)
+          example: webapp
+        version:
+          type: string
+          example: "3.0"
+        languages:
+          type: array
+          description: Lowercase language codes available for this set+version (R-014)
+          items: { type: string }
+          example: [en, fr]
+        families:
+          type: array
+          items:
+            $ref: '#/components/schemas/FamilyDto'
+        totalCards:
+          type: integer
+    FamilyDto:
+      type: object
+      required: [id, name, cardCount]
+      properties:
+        id:
+          type: string
+          description: Suit id within the set, e.g. VE
+          example: VE
+        name:
+          type: string
+          example: "DATA VALIDATION & ENCODING"
+        cardCount:
+          type: integer
+          example: 14
+      description: >
+        A family is selected in the game creator by its global id "setId:familyId"
+        (e.g. "webapp:VE") — see ateliers-api.yaml CreateAtelierRequest.families.

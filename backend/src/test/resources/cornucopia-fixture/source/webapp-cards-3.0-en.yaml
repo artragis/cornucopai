@@ -1,0 +1,40 @@
+---
+meta:
+  edition: "webapp"
+  component: "cards"
+  language: "EN"
+  version: "3.0"
+suits:
+- 
+  id: "VE"
+  name: "DATA VALIDATION & ENCODING"
+  cards:
+    - 
+      id: "VE2"
+      value: "2"
+      url: "https://cornucopia.owasp.org/cards/VE2"
+      desc: "Robert can input malicious data because the allowed protocol format is not being checked"
+    - 
+      id: "VE3"
+      value: "3"
+      desc: "Dave can input malicious field names or data"
+- 
+  id: "AT"
+  name: "AUTHENTICATION"
+  cards:
+    - 
+      id: "AT2"
+      value: "2"
+      desc: "An attacker could try one credential after another"
+    - 
+      id: "ATJ"
+      value: "J"
+      desc: "An attacker could steal credentials stored on the client"
+- 
+  id: "WC"
+  name: "WILD CARD"
+  cards:
+    - 
+      id: "WCA"
+      value: "A"
+      desc: "You have invented a new webapp attack"

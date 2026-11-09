@@ -15,6 +15,8 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.version>3.40.1.1</quarkus.platform.version>
     <quarkus-langchain4j.version>1.15.0</quarkus-langchain4j.version>
+    <!-- R-022: same langchain4j version quarkus-langchain4j-core 1.15.0 already pulls transitively -->
+    <langchain4j.version>1.23.0</langchain4j.version>
     <assertj-core.version>3.27.6</assertj-core.version>
     <rest-assured.version>6.3.0</rest-assured.version>
   </properties>
@@ -40,6 +42,11 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest-jackson</artifactId>
     </dependency>
+    <!-- R-011: parse the Cornucopia YAML cards with the same Jackson stack (BOM-managed version) -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-health</artifactId>
@@ -48,6 +55,12 @@
       <groupId>io.quarkiverse.langchain4j</groupId>
       <artifactId>quarkus-langchain4j-core</artifactId>
       <version>${quarkus-langchain4j.version}</version>
+    </dependency>
+    <!-- R-022: OpenAiChatModel with custom baseUrl for any OpenAI-compatible endpoint (bionic local default) -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-open-ai</artifactId>
+      <version>${langchain4j.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

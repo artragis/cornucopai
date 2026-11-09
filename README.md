@@ -14,8 +14,21 @@ threat modeling.
 - JDK 25 (LTS)
 - Node.js 26 LTS (24 LTS accepted as minimum)
 - git
+- A local clone of the [Cornucopia](https://cornucopiawiki.org/) card repository
+  (the `cornucopia` git repo), pointed to by the `CORNUCOPIA_HOME` environment variable
 
 No system Maven required: `backend/mvnw` downloads the pinned Maven 3.9.x.
+
+### Cornucopia card repository
+
+The backend reads real Cornucopia cards from `CORNUCOPIA_HOME/source/*-cards-*.yaml`
+(see `specs/003-card-set-selection/`). Set it before starting the backend:
+
+```sh
+export CORNUCOPIA_HOME=/path/to/cornucopia
+```
+
+Without it, the card catalog is empty and game creation returns `400`.
 
 ## Commands
 
@@ -58,5 +71,5 @@ for the frontend) on every push and pull request.
 ## Spec-Kit workflow
 
 Feature artifacts live under `specs/` (spec.md, plan.md, research.md, tasks.md,
-quickstart.md, contracts/). Current feature: `specs/001-project-bootstrap/`.
+quickstart.md, contracts/). Current feature: `specs/003-card-set-selection/`.
 The project constitution is at `.specify/memory/constitution.md` (v1.3.0).

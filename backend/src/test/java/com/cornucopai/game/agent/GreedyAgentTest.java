@@ -1,6 +1,7 @@
 package com.cornucopai.game.agent;
 
 import com.cornucopai.game.PlayerAgent;
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Leg;
 import com.cornucopai.game.model.Participant;
@@ -14,7 +15,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GreedyAgentTest {
 
     private final PlayerAgent greedy = new GreedyAgent("Greedy");
-    private final Leg leg = new Leg("Carte-Placeholder-1", "scenario", "explanation");
+    private final Leg leg = new Leg("VE2", "scenario", "explanation");
+    private final Card card = new Card("VE2", "2", "webapp", "VE", "DATA VALIDATION & ENCODING", "en",
+            "Robert can input malicious data because the allowed protocol format is not being checked", null, null);
 
     @Test
     void hasGreedyArchetype() {
@@ -23,11 +26,12 @@ class GreedyAgentTest {
 
     @Test
     void givesAnExcessivelyLongExplanation() {
-        PlayedCard played = greedy.playCard("Carte-Placeholder-2", "<p>f</p>");
-        assertThat(played.cardName()).isEqualTo("Carte-Placeholder-2");
+        PlayedCard played = greedy.playCard(card, "<p>f</p>");
+        assertThat(played.cardName()).isEqualTo("VE2");
+        assertThat(played.explanation()).contains("VE2");
         assertThat(played.explanation().length()).isGreaterThan(500);
         // much longer than a normal explanation
-        PlayedCard normal = new HappyAgent("Happy").playCard("Carte-Placeholder-2", "<p>f</p>");
+        PlayedCard normal = new HappyAgent("Happy").playCard(card, "<p>f</p>");
         assertThat(played.explanation().length()).isGreaterThan(normal.explanation().length() * 10);
     }
 

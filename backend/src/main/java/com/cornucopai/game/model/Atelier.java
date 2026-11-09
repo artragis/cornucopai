@@ -1,13 +1,24 @@
 package com.cornucopai.game.model;
 
+import com.cornucopai.game.card.model.Card;
+import com.cornucopai.game.llm.AgentLlmConfig;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * A game session (workshop). Persisted as {@code atelier.json} inside its
  * {@code atelier{yyyyMMdd-HHmmss}} folder (research R-002).
+ *
+ * <p>Spec 003: {@code deck} is now a list of real {@link Card} objects (id +
+ * description persisted here, R-016), and the atelier also records the chosen
+ * {@code language}, the {@code selectedFamilies} ({@code setId:familyId}) and the
+ * per-set {@code sets} resolved language.
+ *
+ * <p>Spec 004: {@code agentConfigs} persists the resolved per-player LLM provider
+ * configs (FR-012), index-aligned with {@code players}.
  */
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY,
         getterVisibility = JsonAutoDetect.Visibility.NONE,
@@ -21,15 +32,19 @@ public class Atelier {
     private int playerCount;
     private List<Participant> players;
     private List<String> turnOrder;
-    private List<String> deck;
+    private List<Card> deck;
     private Instant finishedAt;
+    private String language = "fr";
+    private List<String> selectedFamilies = new ArrayList<>();
+    private List<SetResolution> sets = new ArrayList<>();
+    private List<AgentLlmConfig> agentConfigs = new ArrayList<>();
 
     /** Jackson deserialization constructor. */
     public Atelier() {
     }
 
     public Atelier(String id, Instant createdAt, String featureHtml, int playerCount,
-                   List<Participant> players, List<String> turnOrder, List<String> deck) {
+                   List<Participant> players, List<String> turnOrder, List<Card> deck) {
         this.id = id;
         this.createdAt = createdAt;
         this.featureHtml = featureHtml;
@@ -39,67 +54,29 @@ public class Atelier {
         this.deck = deck;
     }
 
-    public String id() {
-        return id;
-    }
+    public String id() { return id; }
+    public Instant createdAt() { return createdAt; }
+    public String featureHtml() { return featureHtml; }
+    public int playerCount() { return playerCount; }
+    public List<Participant> players() { return players; }
+    public List<String> turnOrder() { return turnOrder; }
+    public List<Card> deck() { return deck; }
+    public Instant finishedAt() { return finishedAt; }
+    public String language() { return language; }
+    public List<String> selectedFamilies() { return selectedFamilies; }
+    public List<SetResolution> sets() { return sets; }
+    public List<AgentLlmConfig> agentConfigs() { return agentConfigs; }
 
-    public Instant createdAt() {
-        return createdAt;
-    }
-
-    public String featureHtml() {
-        return featureHtml;
-    }
-
-    public int playerCount() {
-        return playerCount;
-    }
-
-    public List<Participant> players() {
-        return players;
-    }
-
-    public List<String> turnOrder() {
-        return turnOrder;
-    }
-
-    public List<String> deck() {
-        return deck;
-    }
-
-    public Instant finishedAt() {
-        return finishedAt;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public void setFeatureHtml(String featureHtml) {
-        this.featureHtml = featureHtml;
-    }
-
-    public void setPlayerCount(int playerCount) {
-        this.playerCount = playerCount;
-    }
-
-    public void setPlayers(List<Participant> players) {
-        this.players = players;
-    }
-
-    public void setTurnOrder(List<String> turnOrder) {
-        this.turnOrder = turnOrder;
-    }
-
-    public void setDeck(List<String> deck) {
-        this.deck = deck;
-    }
-
-    public void setFinishedAt(Instant finishedAt) {
-        this.finishedAt = finishedAt;
-    }
+    public void setId(String id) { this.id = id; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setFeatureHtml(String featureHtml) { this.featureHtml = featureHtml; }
+    public void setPlayerCount(int playerCount) { this.playerCount = playerCount; }
+    public void setPlayers(List<Participant> players) { this.players = players; }
+    public void setTurnOrder(List<String> turnOrder) { this.turnOrder = turnOrder; }
+    public void setDeck(List<Card> deck) { this.deck = deck; }
+    public void setFinishedAt(Instant finishedAt) { this.finishedAt = finishedAt; }
+    public void setLanguage(String language) { this.language = language; }
+    public void setSelectedFamilies(List<String> selectedFamilies) { this.selectedFamilies = selectedFamilies; }
+    public void setSets(List<SetResolution> sets) { this.sets = sets; }
+    public void setAgentConfigs(List<AgentLlmConfig> agentConfigs) { this.agentConfigs = agentConfigs; }
 }

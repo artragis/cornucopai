@@ -1,5 +1,6 @@
 package com.cornucopai.game;
 
+import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Answer;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
@@ -15,6 +16,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -34,12 +36,10 @@ public class GameMaster {
     private static final Logger LOG = Logger.getLogger(GameMaster.class);
 
     private final AtelierStore store;
-    private final PlaceholderCards cards;
     private final Random random;
 
-    public GameMaster(AtelierStore store, PlaceholderCards cards, Random random) {
+    public GameMaster(AtelierStore store, Random random) {
         this.store = store;
-        this.cards = cards;
         this.random = random;
     }
 
@@ -56,8 +56,16 @@ public class GameMaster {
         store.saveAtelier(atelier.id(), atelier);
         LOG.infof("Atelier %s — turn order: %s", atelier.id(), order);
 
-        Map<String, Deque<String>> hands = cards.deal(order, atelier.deck()).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayDeque<>(e.getValue())));
+        // Spec 003 (R-018): deal the real-card deck (already built+shuffled by CardDeckService) round-robin
+        Map<String, Deque<Card>> hands = new LinkedHashMap<>();
+        for (String player : order) {
+            hands.put(player, new ArrayDeque<>());
+        }
+        int i = 0;
+        for (Card card : atelier.deck()) {
+            hands.get(order.get(i % order.size())).add(card);
+            i++;
+        }
 
         int turn = 0;
         int pointer = 0;
@@ -77,7 +85,7 @@ public class GameMaster {
         return atelier;
     }
 
-    private String nextPlayerWithCards(List<String> order, Map<String, Deque<String>> hands, int pointer) {
+    private String nextPlayerWithCards(List<String> order, Map<String, Deque<Card>> hands, int pointer) {
         for (int i = 0; i < order.size(); i++) {
             String candidate = order.get((pointer + i) % order.size());
             if (!hands.get(candidate).isEmpty()) {
@@ -88,12 +96,12 @@ public class GameMaster {
     }
 
     private void runTurn(Atelier atelier, Map<String, PlayerAgent> byName, Map<String, Participant> participants,
-                         Map<String, Deque<String>> hands, List<String> order, String current, int turn) {
+                         Map<String, Deque<Card>> hands, List<String> order, String current, int turn) {
         PlayerAgent cardAgent = byName.get(current);
         Participant cardPlayer = participants.get(current);
-        String card = hands.get(current).poll();
+        Card card = hands.get(current).poll();
 
-        // FR-006/FR-007: the current player gives card + scenario + explanation; leg persisted PENDING
+        // FR-006/FR-007: the current player plays a real Card (id+description) + scenario + explanation; leg persisted PENDING
         PlayedCard played = cardAgent.playCard(card, atelier.featureHtml());
         Leg leg = new Leg(played.cardName(), played.scenario(), played.explanation());
         store.saveLeg(atelier.id(), turn, current, leg);

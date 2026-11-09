@@ -43,7 +43,8 @@ class AtelierResourceTest {
     void postCreatesRunsAndPersistsAFullGame() throws IOException {
         String id = given()
                 .contentType(ContentType.JSON)
-                .body("{\"playerCount\": 4, \"featureHtml\": \"<p>Feature login OAuth2</p>\"}")
+                // spec 004 (FR-014): ONE single family per test game -> bounded turns (webapp:VE = 2 cards -> 2 legs)
+                .body("{\"playerCount\": 4, \"featureHtml\": \"<p>Feature login OAuth2</p>\", \"language\": \"fr\", \"families\": [\"webapp:VE\"]}")
                 .when().post("/api/ateliers")
                 .then().statusCode(201)
                 .body("id", matchesRegex("atelier\\d{8}-\\d{6}(-\\d+)?"))
@@ -53,28 +54,45 @@ class AtelierResourceTest {
                 .body("players.name", contains("Joueur-1", "Joueur-2", "Joueur-3", "Joueur-4"))
                 .body("players.archetype", contains("GRUMPY", "HAPPY", "GREEDY", "PROF"))
                 .body("turnOrder.size()", is(4))
-                .body("legs.size()", is(8))
-                .body("legs.cardName", everyItem(startsWith("Carte-Placeholder-")))
+                // spec 003 + spec 004 (FR-014): real cards from the single family webapp:VE (2) -> 2 cards -> 2 legs
+                .body("language", is("fr"))
+                .body("selectedFamilies", containsInAnyOrder("webapp:VE"))
+                .body("sets.size()", is(1))
+                .body("sets[0].id", is("webapp"))
+                .body("sets[0].resolvedLanguage", is("fr"))
+                .body("deck.size()", is(2))
+                .body("deck.id", containsInAnyOrder("VE2", "VE3"))
+                .body("deck.language", everyItem(is("fr")))
+                .body("deck.description", everyItem(notNullValue()))
+                .body("legs.size()", is(2))
+                .body("legs.cardName", everyItem(isIn(List.of("VE2", "VE3"))))
                 .body("legs.validation", everyItem(anyOf(is("VALIDATED"), is("REJECTED"))))
                 .body("legs.validation", not(hasItem("PENDING")))
                 .body("finishedAt", notNullValue())
                 .extract().path("id");
 
-        // with 4 players (Grumpy/Happy/Greedy/Prof), Grumpy's 2 legs are REJECTED, the 6 others VALIDATED
-        List<String> validations = given()
+        // every leg's cardName references a real card present in the persisted deck
+        List<String> deckIds = given()
                 .when().get("/api/ateliers/" + id)
                 .then().statusCode(200)
-                .extract().jsonPath().getList("legs.validation", String.class);
-        assertThat(validations).containsExactlyInAnyOrder(
-                "VALIDATED", "VALIDATED", "VALIDATED", "VALIDATED", "VALIDATED", "VALIDATED",
-                "REJECTED", "REJECTED");
+                .extract().jsonPath().getList("deck.id", String.class);
+        List<String> legCardNames = given()
+                .when().get("/api/ateliers/" + id)
+                .then().statusCode(200)
+                .extract().jsonPath().getList("legs.cardName", String.class);
+        assertThat(legCardNames).allMatch(deckIds::contains);
 
-        // persistence on disk: atelier.json + 8 leg files with exactly the 5 contract fields
+        // persistence on disk: atelier.json (deck = full Card objects, + agentConfigs from spec 004) + 2 leg files with exactly the 5 contract fields
         Path dir = TEST_ROOT.resolve(id);
         assertThat(dir.resolve("atelier.json")).exists();
+        JsonNode atelierJson = mapper.readTree(dir.resolve("atelier.json").toFile());
+        assertThat(atelierJson.get("deck").isArray()).isTrue();
+        assertThat(atelierJson.get("deck").get(0).has("id")).isTrue();
+        assertThat(atelierJson.get("deck").get(0).has("description")).isTrue();
+        assertThat(atelierJson.get("language").asText()).isEqualTo("fr");
         try (Stream<Path> files = Files.list(dir)) {
             List<Path> legFiles = files.filter(p -> p.getFileName().toString().startsWith("leg-")).toList();
-            assertThat(legFiles).hasSize(8);
+            assertThat(legFiles).hasSize(2);
             for (Path legFile : legFiles) {
                 JsonNode json = mapper.readTree(legFile.toFile());
                 assertThat(json.fieldNames()).toIterable().containsExactlyInAnyOrder(
@@ -87,7 +105,7 @@ class AtelierResourceTest {
     void postWithLessThanTwoPlayersIs400() {
         given()
                 .contentType(ContentType.JSON)
-                .body("{\"playerCount\": 1, \"featureHtml\": \"<p>x</p>\"}")
+                .body("{\"playerCount\": 1, \"featureHtml\": \"<p>x</p>\", \"families\": [\"eop:SP\"]}")
                 .when().post("/api/ateliers")
                 .then().statusCode(400)
                 .body("error", notNullValue());
@@ -97,7 +115,7 @@ class AtelierResourceTest {
     void postWithEmptyFeatureIs400() {
         given()
                 .contentType(ContentType.JSON)
-                .body("{\"playerCount\": 4, \"featureHtml\": \"\"}")
+                .body("{\"playerCount\": 4, \"featureHtml\": \"\", \"families\": [\"eop:SP\"]}")
                 .when().post("/api/ateliers")
                 .then().statusCode(400)
                 .body("error", notNullValue());
@@ -107,7 +125,7 @@ class AtelierResourceTest {
     void getListsAndReturnsDetailAnd404OnUnknown() {
         String id = given()
                 .contentType(ContentType.JSON)
-                .body("{\"playerCount\": 2, \"featureHtml\": \"<p>Feature X</p>\"}")
+                .body("{\"playerCount\": 2, \"featureHtml\": \"<p>Feature X</p>\", \"families\": [\"eop:SP\"]}")
                 .when().post("/api/ateliers")
                 .then().statusCode(201)
                 .extract().path("id");
@@ -120,7 +138,7 @@ class AtelierResourceTest {
         given().when().get("/api/ateliers/" + id)
                 .then().statusCode(200)
                 .body("id", is(id))
-                .body("legs.size()", is(8));
+                .body("legs.size()", is(2)); // eop:SP -> 2 cards
 
         given().when().get("/api/ateliers/atelier2099-01-01-000000")
                 .then().statusCode(404)

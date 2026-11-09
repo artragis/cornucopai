@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/leg-schema.json",
+  "title": "Leg — one played card in a Cornucopia atelier (spec 002 FR-007/FR-012, spec 003 FR-009)",
+  "description": "Each leg is persisted as its own JSON file named leg-{NNN}-{playerSlug}.json inside the atelier folder. Written with validation=PENDING and precisions=[] when the card is played, updated in place as precisions arrive, and finally flipped to VALIDATED or REJECTED after the vote. The 5-field shape is UNCHANGED from spec 002; in spec 003 cardName is a REAL Cornucopia card id (e.g. VE2) that references a full Card (with description) stored in the atelier's deck (atelier.json) — see contracts/atelier-schema.json and research R-016.",
+  "type": "object",
+  "required": ["cardName", "scenario", "explanation", "precisions", "validation"],
+  "additionalProperties": false,
+  "properties": {
+    "cardName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Real id of the played card (spec 003), e.g. VE2 — references a Card in atelier.json deck",
+      "example": "VE2"
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Threat scenario evoked by the player, built from the card's real description"
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The player's explanation of the scenario"
+    },
+    "precisions": {
+      "type": "array",
+      "description": "Precisions added by the other players and 'Je sais' answers to their questions. Empty list when the card is first played.",
+      "items": { "type": "string" },
+      "example": []
+    },
+    "validation": {
+      "type": "string",
+      "enum": ["PENDING", "VALIDATED", "REJECTED"],
+      "description": "PENDING when written, then VALIDATED iff strictly more than half of the voters (all players except the card player) answered yes, else REJECTED"
+    }
+  }
+}

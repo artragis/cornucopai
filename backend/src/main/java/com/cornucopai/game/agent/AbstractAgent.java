@@ -3,7 +3,12 @@ package com.cornucopai.game.agent;
 import com.cornucopai.game.PlayerAgent;
 import com.cornucopai.game.model.Answer;
 
-/** Shared base: name handling and the default "Je sais" answer. */
+/**
+ * Shared base of the deterministic archetype agents.
+ *
+ * <p>Spec 004 (FR-003): deterministic agents are kept for UNIT TESTS ONLY — games are
+ * played by {@link LlmPlayerAgent}.
+ */
 abstract class AbstractAgent implements PlayerAgent {
 
     private final String name;
