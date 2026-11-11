@@ -96,7 +96,7 @@ class AtelierResourceTest {
             for (Path legFile : legFiles) {
                 JsonNode json = mapper.readTree(legFile.toFile());
                 assertThat(json.fieldNames()).toIterable().containsExactlyInAnyOrder(
-                        "cardName", "scenario", "explanation", "precisions", "validation");
+                        "cardName", "scenario", "explanation", "entries", "validation");
             }
         }
     }

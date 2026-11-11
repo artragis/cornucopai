@@ -12,9 +12,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * T031 (US3): the toolbox given to the factory is registered on every LangChain4j
- * brain (FR-005). The CDI path wires the same CardInfoTool via @Inject method
- * (exercised by every @QuarkusTest boot); here the constructor path is asserted.
+ * T031/T012: the toolbox given to the factory is registered on every LangChain4j
+ * brain (FR-005, spec 005 US2): base tools (CardInfoTool) + per-game tools
+ * (TourInfoTool). The CDI path wires the base tool via @Inject method (exercised by
+ * every @QuarkusTest boot); here the constructor paths are asserted.
  */
 class ToolboxWiringTest {
 
@@ -24,8 +25,19 @@ class ToolboxWiringTest {
         LlmDefaults defaults = new LlmDefaults("http://localhost:1235/v1", null, null, Duration.ofSeconds(5));
         LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of(tool));
         LlmBrain brain = factory.create(AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-                "Joueur-1", Archetype.GRUMPY, "atelierX");
+                "Joueur-1", Archetype.GRUMPY, "atelierX", List.of());
         assertThat(brain).isInstanceOf(LangChain4jBrain.class);
         assertThat(((LangChain4jBrain) brain).tools()).contains(tool);
+    }
+
+    @Test
+    void gameToolsAreRegisteredAlongsideBaseTools() {
+        CardInfoTool cardTool = new CardInfoTool(new CardInfoService(Path.of("src/test/resources/cornucopia-fixture")));
+        TourInfoTool tourTool = new TourInfoTool(new LegContext("atelierX"));
+        LlmDefaults defaults = new LlmDefaults("http://localhost:1235/v1", null, null, Duration.ofSeconds(5));
+        LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of(cardTool));
+        LlmBrain brain = factory.create(AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
+                "Joueur-1", Archetype.GRUMPY, "atelierX", List.of(tourTool));
+        assertThat(((LangChain4jBrain) brain).tools()).contains(cardTool, tourTool);
     }
 }

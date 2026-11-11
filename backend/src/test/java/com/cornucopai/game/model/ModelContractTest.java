@@ -33,13 +33,14 @@ class ModelContractTest {
     }
 
     @Test
-    void legStartsPendingWithEmptyPrecisionsAndIsUpdatable() {
+    void legStartsPendingWithEmptyEntriesAndIsUpdatable() {
         Leg leg = new Leg("Carte-Placeholder-1", "scenario", "explanation");
         assertThat(leg.validation()).isEqualTo(ValidationStatus.PENDING);
-        assertThat(leg.precisions()).isEmpty();
+        assertThat(leg.entries()).isEmpty();
 
-        leg.addPrecision("une précision");
-        assertThat(leg.precisions()).containsExactly("une précision");
+        leg.addEntry(LegEntry.precision("Joueur-1", "une précision"));
+        assertThat(leg.entries()).hasSize(1);
+        assertThat(leg.entries().get(0).kind()).isEqualTo(LegEntry.Kind.PRECISION);
 
         leg.setValidation(ValidationStatus.VALIDATED);
         assertThat(leg.validation()).isEqualTo(ValidationStatus.VALIDATED);

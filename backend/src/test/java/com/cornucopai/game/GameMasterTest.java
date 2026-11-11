@@ -5,6 +5,7 @@ import com.cornucopai.game.model.Answer;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
+import com.cornucopai.game.model.LegEntry;
 import com.cornucopai.game.model.Participant;
 import com.cornucopai.game.model.PlayedCard;
 import com.cornucopai.game.model.Reaction;
@@ -190,7 +191,12 @@ class GameMasterTest {
         String expectedAnswer = cardPlayer.equals("A") ? "réponse de A" : "réponse de B";
         List<Leg> legs = store.loadLegs(id);
         assertThat(legs).hasSize(1);
-        assertThat(legs.get(0).precisions()).containsExactly(expectedAnswer);
+        // spec 005 v2: the question + answer persist as ONE QUESTION entry with knows/answer (R-037)
+        assertThat(legs.get(0).entries()).hasSize(1);
+        LegEntry entry = legs.get(0).entries().get(0);
+        assertThat(entry.kind()).isEqualTo(LegEntry.Kind.QUESTION);
+        assertThat(entry.knows()).isTrue();
+        assertThat(entry.answer()).isEqualTo(expectedAnswer);
         // 2 players → 1 voter, votes YES → 1*2 > 1 → VALIDATED
         assertThat(legs.get(0).validation()).isEqualTo(ValidationStatus.VALIDATED);
     }
@@ -218,7 +224,13 @@ class GameMasterTest {
         String expectedPrecision = cardPlayer.equals("A") ? "P-B" : "P-A";
         assertThat(asker.reactQuestionsAllowed).containsExactly(true, false);
         List<Leg> legs = store.loadLegs(id);
-        assertThat(legs.get(0).precisions()).containsExactly(expectedPrecision);
+        // spec 005 v2: QUESTION entry with knows=false, then the PRECISION entry (R-037)
+        assertThat(legs.get(0).entries()).hasSize(2);
+        assertThat(legs.get(0).entries().get(0).kind()).isEqualTo(LegEntry.Kind.QUESTION);
+        assertThat(legs.get(0).entries().get(0).knows()).isFalse();
+        assertThat(legs.get(0).entries().get(1).kind()).isEqualTo(LegEntry.Kind.PRECISION);
+        assertThat(legs.get(0).entries().get(1).text()).isEqualTo(expectedPrecision);
+        assertThat(legs.get(0).entries().get(1).author()).isEqualTo(asker.name);
     }
 
     @Test

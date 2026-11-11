@@ -4,6 +4,7 @@ import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Answer;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
+import com.cornucopai.game.model.LegEntry;
 import com.cornucopai.game.model.Participant;
 import com.cornucopai.game.model.PlayedCard;
 import com.cornucopai.game.model.Reaction;
@@ -117,7 +118,8 @@ public class GameMaster {
             Reaction reaction = other.react(leg, cardPlayer, atelier.featureHtml(), true);
             while (true) {
                 if (reaction instanceof Reaction.Precision precision) {
-                    leg.addPrecision(precision.text());
+                    // spec 005 v2 (R-037): precisions and Q&A are structured entries with their author
+                    leg.addEntry(LegEntry.precision(otherName, precision.text()));
                     store.saveLeg(atelier.id(), turn, current, leg);
                     LOG.infof("Turn %d — %s adds a precision", turn, otherName);
                     break;
@@ -128,11 +130,14 @@ public class GameMaster {
                     }
                     Answer answer = cardAgent.answerQuestion(question.text());
                     if (answer instanceof Answer.Knows knows) {
-                        leg.addPrecision(knows.answer());
+                        leg.addEntry(LegEntry.question(otherName, question.text(), true, knows.answer()));
                         store.saveLeg(atelier.id(), turn, current, leg);
                         LOG.infof("Turn %d — %s asked, %s knows: %s", turn, otherName, current, knows.answer());
                         break;
                     }
+                    // spec 005: record the unanswered question too (knows=false), then re-ask without questions
+                    leg.addEntry(LegEntry.question(otherName, question.text(), false, null));
+                    store.saveLeg(atelier.id(), turn, current, leg);
                     // "Je sais pas": re-ask the same player, who can no longer ask questions
                     LOG.infof("Turn %d — %s asked, %s does not know; re-asking %s without questions",
                             turn, otherName, current, otherName);

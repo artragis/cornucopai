@@ -38,6 +38,9 @@ public class LangChain4jBrain implements LlmBrain {
     private final List<Object> tools;
     /** Built lazily on first call: AiServices touches the CDI Arc container, which is absent in plain unit tests. */
     private volatile PlayerAiService ai;
+    /** Spec 005 US-3 (R-040): the vote call is capped at 100 output tokens via a dedicated model. */
+    public static final int VOTE_MAX_TOKENS = 100;
+    private volatile PlayerAiService voteAi;
 
     public LangChain4jBrain(AgentLlmConfig config, String agentName, String atelierId,
                             LlmDefaults defaults, String systemPrompt, List<Object> tools) {
@@ -53,23 +56,26 @@ public class LangChain4jBrain implements LlmBrain {
         this.tools = List.copyOf(tools);
     }
 
+    private OpenAiChatModel.OpenAiChatModelBuilder modelBuilder() {
+        OpenAiChatModel.OpenAiChatModelBuilder modelBuilder = OpenAiChatModel.builder()
+                .baseUrl(config.baseUrl())
+                .modelName(config.modelName() == null || config.modelName().isBlank() ? "default" : config.modelName())
+                .timeout(defaults.timeout())
+                .maxRetries(1);
+        if (config.apiKey() != null && !config.apiKey().isBlank()) {
+            modelBuilder.apiKey(config.apiKey());
+        }
+        return modelBuilder;
+    }
+
     private PlayerAiService ai() {
         PlayerAiService local = ai;
         if (local == null) {
             synchronized (this) {
                 local = ai;
                 if (local == null) {
-                    OpenAiChatModel.OpenAiChatModelBuilder modelBuilder = OpenAiChatModel.builder()
-                            .baseUrl(config.baseUrl())
-                            .modelName(config.modelName() == null || config.modelName().isBlank() ? "default" : config.modelName())
-                            .timeout(defaults.timeout())
-                            .maxRetries(1);
-                    if (config.apiKey() != null && !config.apiKey().isBlank()) {
-                        modelBuilder.apiKey(config.apiKey());
-                    }
-                    ChatModel model = modelBuilder.build();
                     local = AiServices.builder(PlayerAiService.class)
-                            .chatModel(model)
+                            .chatModel(modelBuilder().build())
                             .systemMessageProvider(id -> systemPrompt)
                             .chatMemory(chatMemory)
                             .tools(tools)
@@ -79,6 +85,37 @@ public class LangChain4jBrain implements LlmBrain {
             }
         }
         return local;
+    }
+
+    /**
+     * Dedicated vote proxy (R-040): same endpoint/memory/system prompt, but the model is
+     * built with {@code maxCompletionTokens(VOTE_MAX_TOKENS)} and NO tools — the vote must be a bare
+     * YES/NO JSON, never reasoning.
+     */
+    private PlayerAiService voteAi() {
+        PlayerAiService local = voteAi;
+        if (local == null) {
+            synchronized (this) {
+                local = voteAi;
+                if (local == null) {
+                    local = AiServices.builder(PlayerAiService.class)
+                            .chatModel(modelBuilder().build())
+                            .systemMessageProvider(id -> systemPrompt)
+                            .chatMemory(chatMemory)
+                            .build();
+                    voteAi = local;
+                }
+            }
+        }
+        return local;
+    }
+
+    public int maxCompletionTokens() {
+        return VOTE_MAX_TOKENS;
+    }
+
+    public boolean hasDedicatedVoteModel() {
+        return true;
     }
 
     @Override
@@ -98,7 +135,7 @@ public class LangChain4jBrain implements LlmBrain {
 
     @Override
     public VoteDto vote(String userPrompt) {
-        return call("vote", () -> ai().vote(userPrompt));
+        return call("vote", () -> voteAi().vote(userPrompt));
     }
 
     /**

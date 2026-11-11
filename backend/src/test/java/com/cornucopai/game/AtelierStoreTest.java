@@ -4,6 +4,7 @@ import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
+import com.cornucopai.game.model.LegEntry;
 import com.cornucopai.game.model.Participant;
 import com.cornucopai.game.model.ValidationStatus;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,28 +91,34 @@ class AtelierStoreTest {
         JsonNode json = mapper.readTree(file.toFile());
         Iterator<String> fields = json.fieldNames();
         assertThat(fields).toIterable()
-                .containsExactlyInAnyOrder("cardName", "scenario", "explanation", "precisions", "validation");
+                .containsExactlyInAnyOrder("cardName", "scenario", "explanation", "entries", "validation");
         assertThat(json.get("cardName").asText()).isEqualTo("Carte-Placeholder-1");
         assertThat(json.get("validation").asText()).isEqualTo("PENDING");
-        assertThat(json.get("precisions").isArray()).isTrue();
-        assertThat(json.get("precisions")).isEmpty();
+        assertThat(json.get("entries").isArray()).isTrue();
+        assertThat(json.get("entries")).isEmpty();
     }
 
     @Test
-    void legUpdateAppendsPrecisionsAndFlipsValidation() throws Exception {
+    void legUpdateAppendsEntriesAndFlipsValidation() throws Exception {
         AtelierStore store = store();
         String id = store.createAtelierDir(store.newAtelierId());
         Leg leg = new Leg("c", "s", "e");
         store.saveLeg(id, 3, "Joueur-2", leg);
 
-        leg.addPrecision("une précision");
-        leg.addPrecision("réponse à une question");
+        leg.addEntry(LegEntry.precision("Joueur-1", "une précision"));
+        leg.addEntry(LegEntry.question("Joueur-1", "une question ?", true, "réponse à une question"));
         leg.setValidation(ValidationStatus.VALIDATED);
         store.saveLeg(id, 3, "Joueur-2", leg);
 
         Path file = tempDir.resolve(id).resolve("leg-003-joueur-2.json");
         JsonNode json = mapper.readTree(file.toFile());
-        assertThat(json.get("precisions").toString()).isEqualTo("[\"une précision\",\"réponse à une question\"]");
+        JsonNode entries = json.get("entries");
+        assertThat(entries).hasSize(2);
+        assertThat(entries.get(0).get("kind").asText()).isEqualTo("PRECISION");
+        assertThat(entries.get(0).get("author").asText()).isEqualTo("Joueur-1");
+        assertThat(entries.get(1).get("kind").asText()).isEqualTo("QUESTION");
+        assertThat(entries.get(1).get("knows").asBoolean()).isTrue();
+        assertThat(entries.get(1).get("answer").asText()).isEqualTo("réponse à une question");
         assertThat(json.get("validation").asText()).isEqualTo("VALIDATED");
     }
 

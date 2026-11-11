@@ -51,12 +51,25 @@ public class LlmBrainFactory {
     }
 
     public LlmBrain create(AgentLlmConfig config, String agentName, Archetype archetype, String atelierId) {
+        return create(config, agentName, archetype, atelierId, List.of());
+    }
+
+    /**
+     * @param gameTools per-game tools (spec 005 US-2: the {@code TourInfoTool}) appended
+     *                  to the base toolbox (R-039)
+     */
+    public LlmBrain create(AgentLlmConfig config, String agentName, Archetype archetype, String atelierId,
+                           List<Object> gameTools) {
         if ("fake".equalsIgnoreCase(mode)) {
             return new FakeLlmBrain();
         }
+        List<Object> allTools = new java.util.ArrayList<>(tools);
+        if (gameTools != null) {
+            allTools.addAll(gameTools);
+        }
         return switch (config.providerType()) {
             case OPENAI_COMPATIBLE ->
-                    new LangChain4jBrain(config, agentName, atelierId, defaults, systemPromptFor(archetype), tools);
+                    new LangChain4jBrain(config, agentName, atelierId, defaults, systemPromptFor(archetype), allTools);
             case ACP -> new AcpCliBrain(config, agentName, systemPromptFor(archetype));
         };
     }

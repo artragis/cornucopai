@@ -96,25 +96,10 @@ public class AcpCliBrain implements LlmBrain {
                     + " (agent " + agentName + ")");
         }
         try {
-            return MAPPER.readValue(stripFences(stdout), type);
+            return MAPPER.readValue(JsonAnswers.stripToJson(stdout), type);
         } catch (IOException e) {
             throw new RuntimeException("ACP command returned unparseable output (agent " + agentName + "): "
                     + stdout, e);
         }
-    }
-
-    private static String stripFences(String out) {
-        String s = out.trim();
-        if (s.startsWith("```")) {
-            int firstNl = s.indexOf('\n');
-            if (firstNl > 0) {
-                s = s.substring(firstNl + 1);
-            }
-            int end = s.lastIndexOf("```");
-            if (end > 0) {
-                s = s.substring(0, end);
-            }
-        }
-        return s.trim();
     }
 }

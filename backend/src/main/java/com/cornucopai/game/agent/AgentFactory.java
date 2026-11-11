@@ -2,8 +2,10 @@ package com.cornucopai.game.agent;
 
 import com.cornucopai.game.PlayerAgent;
 import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.LegContext;
 import com.cornucopai.game.llm.LlmBrain;
 import com.cornucopai.game.llm.LlmBrainFactory;
+import com.cornucopai.game.llm.TourInfoTool;
 import com.cornucopai.game.model.Participant;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -37,11 +39,15 @@ public class AgentFactory {
         if (players.size() != configs.size()) {
             throw new IllegalArgumentException("players and configs must be index-aligned");
         }
+        // spec 005 US-2 (R-038/R-039): one LegContext + one TourInfoTool per game, shared by all its agents
+        LegContext legContext = new LegContext(atelierId);
+        TourInfoTool tourInfoTool = new TourInfoTool(legContext);
+        List<Object> gameTools = List.of(tourInfoTool);
         List<PlayerAgent> agents = new ArrayList<>(players.size());
         for (int i = 0; i < players.size(); i++) {
             Participant p = players.get(i);
-            LlmBrain brain = llmBrainFactory.create(configs.get(i), p.name(), p.archetype(), atelierId);
-            agents.add(new LlmPlayerAgent(p.name(), p.archetype(), brain));
+            LlmBrain brain = llmBrainFactory.create(configs.get(i), p.name(), p.archetype(), atelierId, gameTools);
+            agents.add(new LlmPlayerAgent(p.name(), p.archetype(), brain, legContext));
         }
         return agents;
     }

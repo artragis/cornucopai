@@ -178,7 +178,7 @@ function onClose() {
               :label="`${set.id} ${set.version} (${set.totalCards} cartes)`"
               density="compact"
               hide-details
-              @update:model-value="(v: boolean) => toggleSet(set, v)"
+              @update:model-value="(v: boolean|null) => toggleSet(set, !!v)"
             />
             <div class="ml-6">
               <v-checkbox
@@ -189,7 +189,7 @@ function onClose() {
                 :label="`${family.name} (${family.cardCount})`"
                 density="compact"
                 hide-details
-                @update:model-value="(v: boolean) => toggleFamily(set.id, family.id, v)"
+                @update:model-value="(v: boolean|null) => toggleFamily(set.id, family.id, !!v)"
               />
             </div>
           </div>

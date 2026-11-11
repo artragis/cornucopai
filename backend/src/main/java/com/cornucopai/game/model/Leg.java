@@ -1,14 +1,21 @@
 package com.cornucopai.game.model;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * One played card in a Cornucopia game. Persisted as its own JSON file with
- * exactly 5 fields (contracts/leg-schema.json, FR-007): cardName, scenario,
- * explanation, precisions, validation.
+ * One played card in a Cornucopia game (a "tour"). Persisted as its own JSON file
+ * with exactly 5 fields (contracts/leg-schema.json): cardName, scenario,
+ * explanation, entries, validation.
+ *
+ * <p>Spec 005 v2: {@code entries} (list of structured {@link LegEntry}) replaces the
+ * v1 flat {@code precisions} string list (R-036). Legacy v1 files are still readable:
+ * the explicitly annotated {@link #setLegacyPrecisions(List)} converts incoming
+ * {@code precisions} strings into PRECISION entries (author {@code "inconnu"}) when
+ * {@code entries} is empty. {@code precisions} is never written anymore.
  */
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY,
         getterVisibility = JsonAutoDetect.Visibility.NONE,
@@ -19,12 +26,12 @@ public class Leg {
     private String cardName;
     private String scenario;
     private String explanation;
-    private List<String> precisions;
+    private List<LegEntry> entries;
     private ValidationStatus validation;
 
-    /** J Jackson deserialization constructor. */
+    /** Jackson deserialization constructor. */
     public Leg() {
-        this.precisions = new ArrayList<>();
+        this.entries = new ArrayList<>();
         this.validation = ValidationStatus.PENDING;
     }
 
@@ -41,15 +48,34 @@ public class Leg {
         this.cardName = cardName;
         this.scenario = scenario;
         this.explanation = explanation;
-        this.precisions = new ArrayList<>();
+        this.entries = new ArrayList<>();
         this.validation = ValidationStatus.PENDING;
     }
 
-    public void addPrecision(String precision) {
-        if (precision == null || precision.isBlank()) {
-            throw new IllegalArgumentException("precision must be non-empty");
+    public void addEntry(LegEntry entry) {
+        if (entry == null) {
+            throw new IllegalArgumentException("entry must not be null");
         }
-        this.precisions.add(precision);
+        this.entries.add(entry);
+    }
+
+    /**
+     * Legacy v1 read compatibility (FR-003, R-036): converts each incoming
+     * {@code precisions} string into a PRECISION entry with author {@code "inconnu"}.
+     * The explicit {@code @JsonProperty} overrides the class-level
+     * {@code setterVisibility = NONE}; there is no field/getter named
+     * {@code precisions}, so it is never serialized.
+     */
+    @JsonProperty("precisions")
+    public void setLegacyPrecisions(List<String> precisions) {
+        if (precisions == null || !this.entries.isEmpty()) {
+            return;
+        }
+        for (String p : precisions) {
+            if (p != null && !p.isBlank()) {
+                this.entries.add(LegEntry.precision("inconnu", p));
+            }
+        }
     }
 
     public String cardName() {
@@ -64,8 +90,8 @@ public class Leg {
         return explanation;
     }
 
-    public List<String> precisions() {
-        return precisions;
+    public List<LegEntry> entries() {
+        return entries;
     }
 
     public ValidationStatus validation() {
@@ -84,8 +110,8 @@ public class Leg {
         this.explanation = explanation;
     }
 
-    public void setPrecisions(List<String> precisions) {
-        this.precisions = precisions;
+    public void setEntries(List<LegEntry> entries) {
+        this.entries = entries;
     }
 
     public void setValidation(ValidationStatus validation) {

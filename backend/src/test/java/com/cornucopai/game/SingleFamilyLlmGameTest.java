@@ -76,6 +76,12 @@ class SingleFamilyLlmGameTest {
             assertThat(l.scenario()).isNotBlank();
             assertThat(l.explanation()).isNotBlank();
         });
+        // spec 005 v2: entries are structured objects with kind + author (fake brain reacts PRECISION)
+        assertThat(legs).allSatisfy(l -> assertThat(l.entries()).isNotEmpty());
+        assertThat(legs).flatExtracting(com.cornucopai.game.model.Leg::entries).allSatisfy(e -> {
+            assertThat(e.kind()).isIn("PRECISION", "QUESTION");
+            assertThat(e.author()).isNotBlank();
+        });
         // agentConfigs persisted with the atelier (FR-012)
         Atelier persisted = store.loadAtelier(id).orElseThrow();
         assertThat(persisted.agentConfigs()).isEqualTo(configs);

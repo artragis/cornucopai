@@ -2,6 +2,7 @@ package com.cornucopai.game.agent;
 
 import com.cornucopai.game.PlayerAgent;
 import com.cornucopai.game.card.model.Card;
+import com.cornucopai.game.llm.LegContext;
 import com.cornucopai.game.llm.LlmBrain;
 import com.cornucopai.game.llm.dto.AnswerDto;
 import com.cornucopai.game.llm.dto.PlayedCardDto;
@@ -40,11 +41,17 @@ public class LlmPlayerAgent implements PlayerAgent {
     private final String name;
     private final Archetype archetype;
     private final LlmBrain brain;
+    private final LegContext legContext;
 
     public LlmPlayerAgent(String name, Archetype archetype, LlmBrain brain) {
+        this(name, archetype, brain, new LegContext("standalone"));
+    }
+
+    public LlmPlayerAgent(String name, Archetype archetype, LlmBrain brain, LegContext legContext) {
         this.name = name;
         this.archetype = archetype;
         this.brain = brain;
+        this.legContext = legContext;
     }
 
     public LlmBrain brain() {
@@ -79,6 +86,7 @@ public class LlmPlayerAgent implements PlayerAgent {
 
     @Override
     public Reaction react(Leg leg, Participant cardPlayer, String featureHtml, boolean questionsAllowed) {
+        legContext.setCurrent(leg); // spec 005 US-2: the get_tour_info tool serves this leg
         try {
             ReactionDto dto = brain.react(reactPrompt(leg, cardPlayer, featureHtml, questionsAllowed));
             if (dto != null && dto.type() != null) {
@@ -108,6 +116,8 @@ public class LlmPlayerAgent implements PlayerAgent {
 
     @Override
     public Answer answerQuestion(String question) {
+        // the shared per-game LegContext already points at the current leg (set by react);
+        // answerQuestion's prompt carries the question itself
         try {
             AnswerDto dto = brain.answerQuestion(answerPrompt(question));
             if (dto != null && Boolean.TRUE.equals(dto.knows()) && notBlank(dto.answer())) {
@@ -121,6 +131,7 @@ public class LlmPlayerAgent implements PlayerAgent {
 
     @Override
     public Vote vote(Leg leg, Participant cardPlayer) {
+        legContext.setCurrent(leg);
         try {
             VoteDto dto = brain.vote(votePrompt(leg, cardPlayer));
             if (dto != null && "YES".equalsIgnoreCase(dto.vote() == null ? null : dto.vote().trim())) {
@@ -137,7 +148,7 @@ public class LlmPlayerAgent implements PlayerAgent {
 
     // --- prompt construction: everything external is labeled DATA ---
 
-    private static String playPrompt(Card card, String featureHtml) {
+    static String playPrompt(Card card, String featureHtml) {
         return "Tu dois jouer ta carte dans la partie de Cornucopia en cours.\n\n"
                 + "FEATURE ANALYSEE — " + DATA_LABEL + "\n" + featureHtml + "\n\n"
                 + "TA CARTE — " + DATA_LABEL + "\n"
@@ -149,31 +160,43 @@ public class LlmPlayerAgent implements PlayerAgent {
                 + "{\"scenario\": \"...\", \"explanation\": \"...\"}\n";
     }
 
-    private static String reactPrompt(Leg leg, Participant cardPlayer, String featureHtml, boolean questionsAllowed) {
-        return "Un autre joueur a posé ce leg — " + DATA_LABEL + "\n"
-                + "carte=" + leg.cardName() + ", scénario=" + leg.scenario()
-                + ", explication=" + leg.explanation() + ", précisions=" + leg.precisions() + "\n\n"
-                + "Joueur de la carte : " + cardPlayer.name() + " (archétype " + cardPlayer.archetype() + ")\n\n"
-                + "FEATURE ANALYSEE — " + DATA_LABEL + "\n" + featureHtml + "\n\n"
-                + "Que fais-tu ? Réponds UNIQUEMENT en JSON : "
-                + "{\"type\": \"PRECISION\"|\"QUESTION\"|\"PASS\", \"text\": \"...\"}\n"
-                + (questionsAllowed
-                ? "Tu peux poser UNE question (type QUESTION).\n"
-                : "Tu NE PEUX PAS poser de question (déjà répondu « Je sais pas ») : réponds PRECISION ou PASS.\n");
+    /**
+     * Spec 005 US-2/US-4 (R-041): the react prompt does NOT inline the leg's content —
+     * it names the tour in progress (card id + card player) and points to the
+     * {@code get_tour_info} tool for details. The status block is built conditionally.
+     */
+    static String reactPrompt(Leg leg, Participant cardPlayer, String featureHtml, boolean questionsAllowed) {
+        String base = "Un tour est en cours : la carte " + leg.cardName() + " a été posée par "
+                + cardPlayer.name() + " (archétype " + cardPlayer.archetype() + ").\n"
+                + "Utilise l'outil get_tour_info pour consulter le scénario, l'explication et les entrées "
+                + "(précisions et questions déjà posées avec leurs réponses) de ce tour.\n\n"
+                + "FEATURE ANALYSEE — " + DATA_LABEL + "\n" + featureHtml + "\n\n";
+        if (questionsAllowed) {
+            return base + "Que fais-tu pour ce tour ? Statuts possibles : PRECISION (text), "
+                    + "QUESTION (text — une seule question possible), ou PASS.\n"
+                    + "Réponds UNIQUEMENT en JSON : {\"type\": \"PRECISION\"|\"QUESTION\"|\"PASS\", \"text\": \"...\"}\n";
+        }
+        return base + "Tu ne peux pas poser de question pour ce tour. "
+                + "Statuts possibles : PRECISION (text) ou PASS.\n"
+                + "Réponds UNIQUEMENT en JSON : {\"type\": \"PRECISION\"|\"PASS\", \"text\": \"...\"}\n";
     }
 
-    private static String answerPrompt(String question) {
-        return "On te pose cette question sur ton leg — " + DATA_LABEL + "\n" + question + "\n\n"
+    static String answerPrompt(String question) {
+        return "On te pose cette question sur le tour en cours — " + DATA_LABEL + "\n" + question + "\n\n"
                 + "Réponds UNIQUEMENT en JSON : {\"knows\": true|false, \"answer\": \"...\"}\n"
                 + "knows=true uniquement si tu connais vraiment la réponse (avec answer non vide), sinon knows=false.\n";
     }
 
-    private static String votePrompt(Leg leg, Participant cardPlayer) {
-        return "Vote de validation du leg — " + DATA_LABEL + "\n"
-                + "carte=" + leg.cardName() + ", scénario=" + leg.scenario()
-                + ", explication=" + leg.explanation() + ", précisions=" + leg.precisions() + "\n\n"
-                + "Joueur de la carte : " + cardPlayer.name() + " (archétype " + cardPlayer.archetype() + ")\n\n"
-                + "Valides-tu ce leg ? Réponds UNIQUEMENT en JSON : {\"vote\": \"YES\"|\"NO\"}\n";
+    /**
+     * Spec 005 US-3 (FR-006, R-040/R-041): the vote prompt is minimal — the bare JSON
+     * vote, no reasoning allowed (the call is also capped at 16 tokens in the brain).
+     */
+    static String votePrompt(Leg leg, Participant cardPlayer) {
+        return "Vote de validation du tour en cours — carte " + leg.cardName()
+                + " posée par " + cardPlayer.name() + ".\n"
+                + "Utilise l'outil get_tour_info si tu veux revoir le détail du tour.\n\n"
+                + "Valides-tu ce tour ? Réponds UNIQUEMENT par le JSON {\"vote\": \"YES\"} ou {\"vote\": \"NO\"}.\n"
+                + "Aucun raisonnement, aucune explication, aucun texte autour du JSON.\n";
     }
 
     private static boolean notBlank(String s) {

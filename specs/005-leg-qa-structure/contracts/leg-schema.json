@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/leg-schema.json",
+  "title": "Leg (tour de jeu) — v2.0.0, spec 005-leg-qa-structure (supersedes v1 of specs/002..004)",
+  "description": "Each leg is persisted as its own JSON file named leg-{NNN}-{playerSlug}.json inside the atelier folder. v2 (spec 005): the flat `precisions` string array is REPLACED by `entries`, an array of structured LegEntry objects, so questions and their answers (knows/answer) are first-class. Still 5 top-level fields. LEGACY READ: a v1 file with `precisions: [string]` is still readable — each string is converted to a PRECISION entry with author \"inconnu\" (FR-003, R-036); `precisions` is never written anymore. cardName is a REAL card id (spec 003) referencing a Card in atelier.json's deck.",
+  "type": "object",
+  "required": ["cardName", "scenario", "explanation", "entries", "validation"],
+  "additionalProperties": false,
+  "properties": {
+    "cardName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Real id of the played card, e.g. VE2 — references a Card in atelier.json deck",
+      "example": "VE2"
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Threat scenario evoked by the player, built from the card's real description"
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The player's explanation of the scenario"
+    },
+    "entries": {
+      "type": "array",
+      "description": "Structured entries of the turn: precisions added by other players and questions WITH their answer. Empty when the card is first played.",
+      "items": { "$ref": "#/definitions/LegEntry" },
+      "example": [
+        { "kind": "PRECISION", "author": "Joueur-1", "text": "Le state doit être comparé par égalité exacte" },
+        { "kind": "QUESTION", "author": "Joueur-2", "text": "Que se passe-t-il si la validation échoue ?", "knows": true, "answer": "Le flow est interrompu (fail closed)" }
+      ]
+    },
+    "validation": {
+      "type": "string",
+      "enum": ["PENDING", "VALIDATED", "REJECTED"],
+      "description": "PENDING when written, then VALIDATED iff strictly more than half of the voters (all players except the card player) answered yes, else REJECTED"
+    }
+  },
+  "definitions": {
+    "LegEntry": {
+      "type": "object",
+      "required": ["kind", "author", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["PRECISION", "QUESTION"],
+          "description": "PRECISION = added remark; QUESTION = question to the card player, carrying knows/answer"
+        },
+        "author": {
+          "type": "string",
+          "description": "Player who added the entry; \"inconnu\" for legacy-converted precisions",
+          "example": "Joueur-1"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Precision text, or the question text"
+        },
+        "knows": {
+          "type": "boolean",
+          "description": "QUESTION only — did the card player answer « Je sais » (true) or « Je sais pas » (false)"
+        },
+        "answer": {
+          "type": "string",
+          "description": "QUESTION only, present iff knows=true — the « Je sais » answer"
+        }
+      }
+    }
+  }
+}
