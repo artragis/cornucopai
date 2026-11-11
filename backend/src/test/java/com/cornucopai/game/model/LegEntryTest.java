@@ -48,7 +48,8 @@ class LegEntryTest {
         JsonNode json = mapper.readTree(tempDir.resolve(id).resolve("leg-001-joueur-2.json").toFile());
         assertThat(json.fieldNames()).toIterable().containsExactlyInAnyOrder(
                 "cardName", "scenario", "explanation", "entries", "validation",
-                "turnIndex", "majorSuit", "suitId", "cardValue", "points"); // spec 006 v3
+                "turnIndex", "majorSuit", "suitId", "cardValue", "points", // spec 006 v3
+                "votes"); // spec 007 v4 (R-053)
         JsonNode entries = json.get("entries");
         assertThat(entries).hasSize(3);
         assertThat(entries.get(0).get("kind").asText()).isEqualTo("PRECISION");

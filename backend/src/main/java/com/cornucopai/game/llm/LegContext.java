@@ -1,7 +1,9 @@
 package com.cornucopai.game.llm;
 
+import com.cornucopai.game.model.DebateTurn;
 import com.cornucopai.game.model.Leg;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -14,6 +16,8 @@ public class LegContext {
 
     private final String atelierId;
     private final AtomicReference<Leg> current = new AtomicReference<>();
+    /** Spec 007 US5 (R-052): arguments exchanged during the pre-vote debate of the current leg. */
+    private final AtomicReference<List<DebateTurn>> debateTurns = new AtomicReference<>(List.of());
 
     public LegContext(String atelierId) {
         this.atelierId = atelierId;
@@ -25,6 +29,14 @@ public class LegContext {
 
     public Leg current() {
         return current.get();
+    }
+
+    public void setDebateTurns(List<DebateTurn> turns) {
+        debateTurns.set(turns == null ? List.of() : turns);
+    }
+
+    public List<DebateTurn> debateTurns() {
+        return debateTurns.get();
     }
 
     public String atelierId() {

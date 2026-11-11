@@ -92,7 +92,8 @@ class AtelierStoreTest {
         Iterator<String> fields = json.fieldNames();
         assertThat(fields).toIterable()
                 .containsExactlyInAnyOrder("cardName", "scenario", "explanation", "entries", "validation",
-                        "turnIndex", "majorSuit", "suitId", "cardValue", "points"); // spec 006 v3 additive fields
+                        "turnIndex", "majorSuit", "suitId", "cardValue", "points", // spec 006 v3 additive fields
+                        "votes"); // spec 007 v4 additive field (R-053)
         assertThat(json.get("cardName").asText()).isEqualTo("Carte-Placeholder-1");
         assertThat(json.get("validation").asText()).isEqualTo("PENDING");
         assertThat(json.get("entries").isArray()).isTrue();

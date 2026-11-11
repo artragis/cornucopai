@@ -36,6 +36,8 @@ public class Leg {
     private String suitId;
     private String cardValue;
     private int points;
+    // Spec 007 v4 (R-053): per-voter structured vote decisions — empty on legacy legs
+    private List<VoteDecision> votes = new ArrayList<>();
 
     /** Jackson deserialization constructor. */
     public Leg() {
@@ -139,4 +141,12 @@ public class Leg {
     public void setSuitId(String suitId) { this.suitId = suitId; }
     public void setCardValue(String cardValue) { this.cardValue = cardValue; }
     public void setPoints(int points) { this.points = points; }
+
+    // ---- spec 007 v4 accessors (leg-schema.json v4.0.0) ----
+
+    public List<VoteDecision> votes() { return votes; }
+
+    public void setVotes(List<VoteDecision> votes) {
+        this.votes = votes == null ? new ArrayList<>() : votes;
+    }
 }

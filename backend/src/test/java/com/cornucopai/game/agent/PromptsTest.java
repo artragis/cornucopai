@@ -42,9 +42,12 @@ class PromptsTest {
     @Test
     void votePromptDemandsBareJsonAndForbidsReasoning() {
         String p = LlmPlayerAgent.votePrompt(leg, cardPlayer);
-        assertThat(p).contains("{\"vote\": \"YES\"}").contains("{\"vote\": \"NO\"}");
+        // spec 007 US3 (R-051): the vote contract is now the 4-field decision-tree JSON
+        assertThat(p).contains("\"vote\": \"YES\"|\"NO\"");
+        assertThat(p).contains("explanationCheck").contains("applicabilityCheck").contains("justification");
+        // spec 007 US3 (FR-009): both decision-tree branches are stated
+        assertThat(p).contains("suffisamment bien expliqué").contains("applicable à notre projet réel");
         assertThat(p).containsIgnoringCase("aucun raisonnement");
-        assertThat(p).containsIgnoringCase("aucune explication");
     }
 
     @Test

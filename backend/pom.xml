@@ -17,6 +17,10 @@
     <quarkus-langchain4j.version>1.15.0</quarkus-langchain4j.version>
     <!-- R-022: same langchain4j version quarkus-langchain4j-core 1.15.0 already pulls transitively -->
     <langchain4j.version>1.23.0</langchain4j.version>
+    <!-- R-045 (spec 007): langchain4j-mcp and langchain4j-agentic follow a separate beta
+         versioning line; the release aligned with core 1.23.0 is 1.23.0-beta33
+         (verified against Maven Central maven-metadata.xml on 2026-11-11) -->
+    <langchain4j-beta.version>1.23.0-beta33</langchain4j-beta.version>
     <assertj-core.version>3.27.6</assertj-core.version>
     <rest-assured.version>6.3.0</rest-assured.version>
   </properties>
@@ -61,6 +65,24 @@
       <groupId>dev.langchain4j</groupId>
       <artifactId>langchain4j-open-ai</artifactId>
       <version>${langchain4j.version}</version>
+    </dependency>
+    <!-- R-045 (spec 007): MCP client — StreamableHttpMcpTransport, DefaultMcpClient, McpToolProvider -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-mcp</artifactId>
+      <version>${langchain4j-beta.version}</version>
+    </dependency>
+    <!-- R-045/R-050 (spec 007): agentic workflows for the bounded pre-vote debate -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-agentic</artifactId>
+      <version>${langchain4j-beta.version}</version>
+    </dependency>
+    <!-- R-050 (spec 007): DebatePlanner / VotingPlanner live in the patterns module -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-agentic-patterns</artifactId>
+      <version>${langchain4j-beta.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

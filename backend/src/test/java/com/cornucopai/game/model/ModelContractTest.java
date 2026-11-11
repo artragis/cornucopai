@@ -75,7 +75,7 @@ class ModelContractTest {
 
     // ---- T004 (spec 006, Phase 2): Leg v3 additive fields + Atelier extended (R-047, R-048) ----
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
 
     @Test
     void legV3RoundTripsWithTourFields() throws Exception {
@@ -135,5 +135,44 @@ class ModelContractTest {
         assertThat(read.tours()).isEmpty();
         assertThat(read.scores()).isEmpty();
         assertThat(read.winner()).isEmpty();
+    }
+
+    // ---- T004 (spec 007, Phase 2): Atelier.projectFacts + Leg.votes, additive v4.0.0/v0.7.0 (R-053) ----
+
+    @Test
+    void atelierV070RoundTripsWithProjectFacts() throws Exception {
+        Atelier a = new Atelier("atelierX", null, "<p>f</p>", 2, List.of(), List.of(), List.of());
+        a.setProjectFacts(List.of(new com.cornucopai.game.memory.ProjectFact(
+                "pas d'API REST", "Joueur-1", 1, java.time.Instant.parse("2026-11-11T10:00:00Z"))));
+        String json = mapper.writeValueAsString(a);
+        Atelier read = mapper.readValue(json, Atelier.class);
+        assertThat(read.projectFacts()).hasSize(1);
+        assertThat(read.projectFacts().get(0).text()).isEqualTo("pas d'API REST");
+    }
+
+    @Test
+    void atelierLegacyWithoutProjectFactsReadsEmpty() throws Exception {
+        String legacyJson = "{\"id\":\"atelierOld\",\"createdAt\":null,\"featureHtml\":\"<p>x</p>\",\"playerCount\":2,"
+                + "\"players\":[],\"turnOrder\":[],\"deck\":[]}";
+        Atelier read = mapper.readValue(legacyJson, Atelier.class);
+        assertThat(read.projectFacts()).isEmpty();
+    }
+
+    @Test
+    void legV4RoundTripsWithVotes() throws Exception {
+        Leg leg = new Leg("VE2", "scenario", "explanation");
+        leg.setVotes(List.of(new VoteDecision("Joueur-2", com.cornucopai.game.model.VoteChoice.NO, com.cornucopai.game.model.ExplanationCheck.OK, com.cornucopai.game.model.ApplicabilityCheck.NOT_APPLICABLE, "hors sujet")));
+        String json = mapper.writeValueAsString(leg);
+        Leg read = mapper.readValue(json, Leg.class);
+        assertThat(read.votes()).hasSize(1);
+        assertThat(read.votes().get(0).vote()).isEqualTo(com.cornucopai.game.model.VoteChoice.NO);
+        assertThat(read.votes().get(0).applicabilityCheck()).isEqualTo(com.cornucopai.game.model.ApplicabilityCheck.NOT_APPLICABLE);
+    }
+
+    @Test
+    void legV4LegacyFileReadsWithEmptyVotes() throws Exception {
+        String legacyJson = "{\"cardName\":\"VE2\",\"scenario\":\"s\",\"explanation\":\"e\",\"entries\":[],\"validation\":\"PENDING\"}";
+        Leg read = mapper.readValue(legacyJson, Leg.class);
+        assertThat(read.votes()).isEmpty();
     }
 }

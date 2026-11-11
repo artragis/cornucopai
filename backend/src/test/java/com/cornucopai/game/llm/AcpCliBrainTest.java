@@ -38,7 +38,7 @@ class AcpCliBrainTest {
         Files.writeString(script, "#!/bin/sh\necho '```json'\necho '{\"vote\":\"NO\"}'\necho '```'\n");
         assertThat(script.toFile().setExecutable(true)).isTrue();
         AcpCliBrain brain = new AcpCliBrain(acpConfig(script.toString()), "Joueur-1", "SYS");
-        assertThat(brain.vote("user prompt").vote()).isEqualTo("NO");
+        assertThat(brain.vote("user prompt").vote()).isEqualTo(com.cornucopai.game.model.VoteChoice.NO);
     }
 
     @Test

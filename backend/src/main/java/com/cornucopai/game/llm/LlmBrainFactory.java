@@ -60,6 +60,17 @@ public class LlmBrainFactory {
      */
     public LlmBrain create(AgentLlmConfig config, String agentName, Archetype archetype, String atelierId,
                            List<Object> gameTools) {
+        return create(config, agentName, archetype, atelierId, gameTools, null);
+    }
+
+    /**
+     * @param gameTools    per-game tools (spec 005 US-2: the {@code TourInfoTool}) appended
+     *                     to the base toolbox (R-039)
+     * @param mcpToolProvider spec 007 US1 (R-046): the IDE MCP tool provider, wired via
+     *                     {@code .toolProvider(...)} in addition to {@code .tools(...)}; null = no MCP tools
+     */
+    public LlmBrain create(AgentLlmConfig config, String agentName, Archetype archetype, String atelierId,
+                           List<Object> gameTools, dev.langchain4j.service.tool.ToolProvider mcpToolProvider) {
         if ("fake".equalsIgnoreCase(mode)) {
             return new FakeLlmBrain();
         }
@@ -69,7 +80,7 @@ public class LlmBrainFactory {
         }
         return switch (config.providerType()) {
             case OPENAI_COMPATIBLE ->
-                    new LangChain4jBrain(config, agentName, atelierId, defaults, systemPromptFor(archetype), allTools);
+                    new LangChain4jBrain(config, agentName, atelierId, defaults, systemPromptFor(archetype), allTools, mcpToolProvider);
             case ACP -> new AcpCliBrain(config, agentName, systemPromptFor(archetype));
         };
     }

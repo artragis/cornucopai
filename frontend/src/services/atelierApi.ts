@@ -5,6 +5,8 @@ export interface CreateAtelierRequest {
   language?: string
   /** Selected families as "setId:familyId" pairs, e.g. "webapp:VE" (FR-005). */
   families: string[]
+  /** spec 007 (FR-007, API v0.7.0): optional source atelier id whose projectFacts are inherited. */
+  inheritFactsFrom?: string
 }
 
 export interface ParticipantDto {
@@ -88,6 +90,8 @@ export interface AtelierSummaryDto {
   id: string
   createdAt: string
   playerCount: number
+  /** spec 007 (API v0.7.0): true when the atelier has persisted project facts (dropdown source). */
+  hasProjectFacts?: boolean
 }
 
 // ---- Card catalog (GET /api/card-catalog) ----

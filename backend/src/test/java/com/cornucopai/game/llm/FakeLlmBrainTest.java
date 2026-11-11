@@ -31,7 +31,7 @@ class FakeLlmBrainTest {
         assertThat(brain.lastAnswerPrompt).isEqualTo("prompt-answer");
 
         VoteDto vote = brain.vote("prompt-vote");
-        assertThat(vote.vote()).isEqualTo("YES");
+        assertThat(vote.vote()).isEqualTo(com.cornucopai.game.model.VoteChoice.YES);
         assertThat(brain.lastVotePrompt).isEqualTo("prompt-vote");
     }
 }

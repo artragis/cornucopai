@@ -33,21 +33,31 @@ public class AtelierService {
     private final CardDeckService cardDeckService;
     private final AgentConfigResolver agentConfigResolver;
     private final Random random;
+    /** Spec 007 (FR-013): pre-vote debate, OFF by default since 2026-11-11 (see application.properties). */
+    private final boolean debateEnabled;
 
     @Inject
     public AtelierService(AtelierStore store, AgentFactory agentFactory, CardCatalogService catalogService,
-                          LlmDefaults llmDefaults) {
-        this(store, agentFactory, new CardDeckService(catalogService), new AgentConfigResolver(llmDefaults), new Random());
+                          LlmDefaults llmDefaults,
+                          @org.eclipse.microprofile.config.inject.ConfigProperty(name = "cornucopai.debate.enabled", defaultValue = "false") boolean debateEnabled) {
+        this(store, agentFactory, new CardDeckService(catalogService), new AgentConfigResolver(llmDefaults), new Random(), debateEnabled);
     }
 
     /** Test-friendly constructor with a seeded random. */
     public AtelierService(AtelierStore store, AgentFactory agentFactory, CardDeckService cardDeckService,
                           AgentConfigResolver agentConfigResolver, Random random) {
+        this(store, agentFactory, cardDeckService, agentConfigResolver, random, false);
+    }
+
+    /** Test-friendly constructor with a seeded random + debate flag (spec 007 US5). */
+    public AtelierService(AtelierStore store, AgentFactory agentFactory, CardDeckService cardDeckService,
+                          AgentConfigResolver agentConfigResolver, Random random, boolean debateEnabled) {
         this.store = store;
         this.agentFactory = agentFactory;
         this.cardDeckService = cardDeckService;
         this.agentConfigResolver = agentConfigResolver;
         this.random = random;
+        this.debateEnabled = debateEnabled;
     }
 
     public AtelierResponse createAndRun(CreateAtelierRequest request) {
@@ -69,15 +79,32 @@ public class AtelierService {
         atelier.setSelectedFamilies(families);
         atelier.setSets(deckResult.sets());
         atelier.setAgentConfigs(resolved.configs()); // FR-012: persisted with the atelier
+        // Spec 007 (FR-007, R-053, clarification 2026-11-11): optional inheritance of the
+        // source atelier's shared project memory (chosen via the UI dropdown)
+        if (request.inheritFactsFrom() != null && !request.inheritFactsFrom().isBlank()) {
+            Atelier source = store.loadAtelier(request.inheritFactsFrom())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "unknown inheritFactsFrom: " + request.inheritFactsFrom()));
+            atelier.setProjectFacts(source.projectFacts());
+            LOG.infof("Atelier %s inherits %d project facts from %s",
+                    id, source.projectFacts().size(), source.id());
+        }
+        // Spec 007 (review 2026-11-11): seed the agents' shared memory with the atelier's
+        // facts (possibly inherited) so they start the game with previous runs' knowledge
+        agents.stream().map(PlayerAgent::sharedMemory)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .ifPresent(memory -> memory.setAll(atelier.projectFacts()));
         LOG.infof("Launching atelier %s with %d players, %d real cards from %s (%s)",
                 id, request.playerCount(), deckResult.deck().size(), families, language);
-        Atelier result = new GameMaster(store, random).runGame(atelier, agents);
+        Atelier result = new GameMaster(store, random, debateEnabled).runGame(atelier, agents);
         return AtelierResponse.from(result, store.loadLegs(id));
     }
 
     public List<AtelierSummary> list() {
         return store.listAteliers().stream()
-                .map(a -> new AtelierSummary(a.id(), a.createdAt(), a.playerCount()))
+                .map(a -> new AtelierSummary(a.id(), a.createdAt(), a.playerCount(),
+                        a.projectFacts() != null && !a.projectFacts().isEmpty())) // spec 007 v0.7.0 (R-056)
                 .toList();
     }
 

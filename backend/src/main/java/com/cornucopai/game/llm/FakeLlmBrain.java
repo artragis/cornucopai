@@ -40,6 +40,17 @@ public class FakeLlmBrain implements LlmBrain {
     @Override
     public VoteDto vote(String userPrompt) {
         lastVotePrompt = userPrompt;
-        return new VoteDto("YES");
+        return new VoteDto(com.cornucopai.game.model.VoteChoice.YES,
+                com.cornucopai.game.model.ExplanationCheck.OK,
+                com.cornucopai.game.model.ApplicabilityCheck.OK, "scénario de test validé");
+    }
+
+    /** Spec 007 US5: canned debate argument. */
+    public volatile String lastDebatePrompt;
+
+    @Override
+    public String debate(String userPrompt) {
+        lastDebatePrompt = userPrompt;
+        return "Argument de test pour le débat";
     }
 }

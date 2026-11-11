@@ -23,4 +23,7 @@ public interface PlayerAiService {
     AnswerDto answerQuestion(@V("input") String input);
 
     VoteDto vote(@V("input") String input);
+
+    /** Spec 007 US5 (R-050/R-052): one free-text debate argument for the pre-vote exchange. */
+    String debate(@V("input") String input);
 }

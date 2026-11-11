@@ -36,6 +36,8 @@ public class LangChain4jBrain implements LlmBrain {
     private final ChatMemory chatMemory;
     private final String systemPrompt;
     private final List<Object> tools;
+    /** Spec 007 US1 (R-046): IDE MCP tool provider, wired via .toolProvider(...); null = no MCP tools. */
+    private final dev.langchain4j.service.tool.ToolProvider mcpToolProvider;
     /** Built lazily on first call: AiServices touches the CDI Arc container, which is absent in plain unit tests. */
     private volatile PlayerAiService ai;
     /** Spec 005 US-3 (R-040): the vote call is capped at 100 output tokens via a dedicated model. */
@@ -44,6 +46,12 @@ public class LangChain4jBrain implements LlmBrain {
 
     public LangChain4jBrain(AgentLlmConfig config, String agentName, String atelierId,
                             LlmDefaults defaults, String systemPrompt, List<Object> tools) {
+        this(config, agentName, atelierId, defaults, systemPrompt, tools, null);
+    }
+
+    public LangChain4jBrain(AgentLlmConfig config, String agentName, String atelierId,
+                            LlmDefaults defaults, String systemPrompt, List<Object> tools,
+                            dev.langchain4j.service.tool.ToolProvider mcpToolProvider) {
         this.config = config;
         this.agentName = agentName;
         this.atelierId = atelierId;
@@ -54,6 +62,7 @@ public class LangChain4jBrain implements LlmBrain {
                 .build();
         this.systemPrompt = systemPrompt;
         this.tools = List.copyOf(tools);
+        this.mcpToolProvider = mcpToolProvider;
     }
 
     private OpenAiChatModel.OpenAiChatModelBuilder modelBuilder() {
@@ -74,12 +83,15 @@ public class LangChain4jBrain implements LlmBrain {
             synchronized (this) {
                 local = ai;
                 if (local == null) {
-                    local = AiServices.builder(PlayerAiService.class)
+                    var builder = AiServices.builder(PlayerAiService.class)
                             .chatModel(modelBuilder().build())
                             .systemMessageProvider(id -> systemPrompt)
                             .chatMemory(chatMemory)
-                            .tools(tools)
-                            .build();
+                            .tools(tools);
+                    if (mcpToolProvider != null) {
+                        builder.toolProvider(mcpToolProvider); // spec 007 US1 (R-046): MCP tools alongside @Tool tools
+                    }
+                    local = builder.build();
                     ai = local;
                 }
             }
@@ -138,6 +150,11 @@ public class LangChain4jBrain implements LlmBrain {
         return call("vote", () -> voteAi().vote(userPrompt));
     }
 
+    @Override
+    public String debate(String userPrompt) {
+        return call("debate", () -> ai().debate(userPrompt));
+    }
+
     /**
      * Structured logging of every LLM call (constitution IV): agent, method, duration.
      * The prompt content and the apiKey are NEVER logged (security-sensitive).
@@ -160,4 +177,6 @@ public class LangChain4jBrain implements LlmBrain {
     public ChatMemory chatMemory() { return chatMemory; }
     public String systemPrompt() { return systemPrompt; }
     public List<Object> tools() { return tools; }
+    /** Spec 007 US1 test accessor (T013, SC-001). */
+    public dev.langchain4j.service.tool.ToolProvider mcpToolProvider() { return mcpToolProvider; }
 }

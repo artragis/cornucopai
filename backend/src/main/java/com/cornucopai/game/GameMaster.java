@@ -45,10 +45,18 @@ public class GameMaster {
 
     private final AtelierStore store;
     private final Random random;
+    /** Spec 007 US5 (FR-013): whether the bounded pre-vote debate runs (OFF by default since 2026-11-11). */
+    private final boolean debateEnabled;
+    private final com.cornucopai.game.debate.DebateOrchestrator debateOrchestrator = new com.cornucopai.game.debate.DebateOrchestrator();
 
     public GameMaster(AtelierStore store, Random random) {
+        this(store, random, false);
+    }
+
+    public GameMaster(AtelierStore store, Random random, boolean debateEnabled) {
         this.store = store;
         this.random = random;
+        this.debateEnabled = debateEnabled;
     }
 
     public Atelier runGame(Atelier atelier, List<PlayerAgent> agents) {
@@ -205,7 +213,21 @@ public class GameMaster {
             }
         }
 
-        // FR-011/FR-012: every other player votes; strict majority of yes among voters → VALIDATED
+        // Spec 007 US5 (FR-013, R-052): bounded pre-vote debate, only when enabled (OFF by default since 2026-11-11)
+        com.cornucopai.game.llm.LegContext legContext = cardAgent.legContext();
+        if (debateEnabled && legContext != null) {
+            List<PlayerAgent> voters = order.stream()
+                    .filter(n -> !n.equals(current))
+                    .map(byName::get)
+                    .toList();
+            legContext.setCurrent(leg);
+            debateOrchestrator.runDebate(leg, voters, cardPlayer, legContext);
+        } else if (legContext != null) {
+            legContext.setDebateTurns(List.of());
+        }
+
+        // FR-011/FR-012 + spec 007 US3 (FR-010): every other player votes with a structured
+        // decision-tree justification; strict majority of yes among voters → VALIDATED
         int voters = 0;
         int yes = 0;
         for (String otherName : order) {
@@ -213,15 +235,36 @@ public class GameMaster {
                 continue;
             }
             voters++;
-            Vote vote = byName.get(otherName).vote(leg, cardPlayer);
-            if (vote == Vote.YES) {
+            com.cornucopai.game.model.VoteDecision decision = byName.get(otherName).voteWithDecision(leg, cardPlayer);
+            List<com.cornucopai.game.model.VoteDecision> votes = new ArrayList<>(leg.votes());
+            votes.add(decision);
+            leg.setVotes(votes);
+            if (decision.vote() == com.cornucopai.game.model.VoteChoice.YES) {
                 yes++;
             }
         }
         leg.setValidation(yes * 2 > voters ? ValidationStatus.VALIDATED : ValidationStatus.REJECTED);
         store.saveLeg(atelier.id(), turn, current, leg);
         LOG.infof("Turn %d — vote %d/%d yes → %s", turn, yes, voters, leg.validation());
+
+        persistFacts(atelier, byName);
         return new LegPlay(current, card, leg, turn);
+    }
+
+    /**
+     * Spec 007 US2 (FR-008, review 2026-11-11): after each turn, snapshot the agents' shared
+     * project memory into the atelier and persist it, so discovered facts survive a restart
+     * (atelier.json) and can be inherited by a later run via {@code inheritFactsFrom}.
+     */
+    private void persistFacts(Atelier atelier, Map<String, PlayerAgent> byName) {
+        for (PlayerAgent agent : byName.values()) {
+            com.cornucopai.game.memory.SharedProjectMemory memory = agent.sharedMemory();
+            if (memory != null) {
+                atelier.setProjectFacts(new ArrayList<>(memory.facts()));
+                store.saveAtelier(atelier.id(), atelier);
+                return;
+            }
+        }
     }
 
     /**

@@ -24,4 +24,12 @@ public interface LlmBrain {
     AnswerDto answerQuestion(String userPrompt);
 
     VoteDto vote(String userPrompt);
+
+    /**
+     * Spec 007 US5 (R-050): one free-text debate argument. Default returns an empty
+     * string so non-LLM brains (ACP) simply skip the debate.
+     */
+    default String debate(String userPrompt) {
+        return "";
+    }
 }

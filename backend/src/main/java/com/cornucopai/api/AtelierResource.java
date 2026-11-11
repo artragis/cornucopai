@@ -75,6 +75,13 @@ public class AtelierResource {
                     .entity(new ErrorResponse("invalid agent config: " + e.getMessage()))
                     .build();
         }
+        // Spec 007 (FR-007, API v0.7.0): unknown inheritFactsFrom -> 400
+        if (request.inheritFactsFrom() != null && !request.inheritFactsFrom().isBlank()
+                && service.get(request.inheritFactsFrom()).isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ErrorResponse("unknown inheritFactsFrom: " + request.inheritFactsFrom()))
+                    .build();
+        }
         AtelierResponse response = service.createAndRun(request);
         return Response.status(Response.Status.CREATED).entity(response).build();
     }

@@ -106,9 +106,49 @@ class AtelierResourceTest {
                 JsonNode json = mapper.readTree(legFile.toFile());
                 assertThat(json.fieldNames()).toIterable().containsExactlyInAnyOrder(
                         "cardName", "scenario", "explanation", "entries", "validation",
-                        "turnIndex", "majorSuit", "suitId", "cardValue", "points"); // spec 006 v3
+                        "turnIndex", "majorSuit", "suitId", "cardValue", "points", // spec 006 v3
+                        "votes"); // spec 007 v4 (R-053)
             }
         }
+    }
+
+    @Test
+    void spec007InheritFactsFromCopiesProjectFacts() throws IOException {
+        // create a first atelier, then inject a project fact directly into its persisted JSON
+        String firstId = given()
+                .contentType(ContentType.JSON)
+                .body("{\"playerCount\": 2, \"featureHtml\": \"<p>f1</p>\", \"language\": \"fr\", \"families\": [\"webapp:VE\"]}")
+                .when().post("/api/ateliers")
+                .then().statusCode(201)
+                .body("projectFacts", notNullValue())
+                .extract().path("id");
+        Path firstJson = TEST_ROOT.resolve(firstId).resolve("atelier.json");
+        JsonNode node = mapper.readTree(firstJson.toFile());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) node).set("projectFacts",
+                mapper.readTree("[{\"text\":\"pas d'API REST\",\"author\":\"Joueur-1\",\"turnIndex\":1,\"timestamp\":\"2026-11-11T10:00:00Z\"}]"));
+        Files.writeString(firstJson, mapper.writeValueAsString(node));
+
+        // GET list must flag it hasProjectFacts=true (API v0.7.0, R-056)
+        given().when().get("/api/ateliers").then().statusCode(200)
+                .body("find { it.id == '" + firstId + "' }.hasProjectFacts", is(true));
+
+        // create a second atelier inheriting the facts (FR-007)
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"playerCount\": 2, \"featureHtml\": \"<p>f2</p>\", \"language\": \"fr\", \"families\": [\"webapp:VE\"], \"inheritFactsFrom\": \"" + firstId + "\"}")
+                .when().post("/api/ateliers")
+                .then().statusCode(201)
+                .body("projectFacts.size()", is(1))
+                .body("projectFacts[0].text", is("pas d'API REST"));
+    }
+
+    @Test
+    void spec007UnknownInheritFactsFromIs400() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\", \"families\": [\"webapp:VE\"], \"inheritFactsFrom\": \"atelier-does-not-exist\"}")
+                .when().post("/api/ateliers")
+                .then().statusCode(400);
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.cornucopai.game.model.Participant;
 import com.cornucopai.game.model.PlayedCard;
 import com.cornucopai.game.model.Reaction;
 import com.cornucopai.game.model.Vote;
+import com.cornucopai.game.model.VoteChoice;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -113,11 +114,11 @@ class LlmPlayerAgentTest {
 
     @Test
     void voteMapsYesNoAndInvalidToNo() {
-        brain.vote.add(new VoteDto("YES"));
+        brain.vote.add(new VoteDto(VoteChoice.YES));
         assertThat(agent.vote(leg, cardPlayer)).isEqualTo(Vote.YES);
-        brain.vote.add(new VoteDto("NO"));
+        brain.vote.add(new VoteDto(VoteChoice.NO));
         assertThat(agent.vote(leg, cardPlayer)).isEqualTo(Vote.NO);
-        brain.vote.add(new VoteDto("MAYBE"));
+        brain.vote.add(new VoteDto(null));
         assertThat(agent.vote(leg, cardPlayer)).isEqualTo(Vote.NO);
     }
 

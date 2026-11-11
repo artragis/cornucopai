@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/leg-schema.json",
+  "title": "Leg (tour de jeu) — v4.0.0, spec 007-contextual-game-turns (supersedes v3.0.0 of spec 006, v2.0.0 of spec 005)",
+  "description": "Each leg is persisted as leg-{NNN}-{playerSlug}.json inside the atelier folder. v4 (spec 007): additive `votes` array of structured VoteDecision objects (FR-010). v3 fields (turnIndex, majorSuit, suitId, cardValue, points) and v2 fields (entries replacing legacy precisions) are unchanged. LEGACY READ: v1 `precisions: [string]` still converts to PRECISION entries with author \"inconnu\" (R-036 spec 005); missing `votes` reads as an empty array.",
+  "type": "object",
+  "required": ["cardName", "scenario", "explanation", "entries", "validation"],
+  "additionalProperties": false,
+  "properties": {
+    "cardName": { "type": "string", "minLength": 1, "example": "VE2" },
+    "scenario": { "type": "string", "minLength": 1 },
+    "explanation": { "type": "string", "minLength": 1 },
+    "entries": {
+      "type": "array",
+      "description": "Structured entries of the turn (spec 005 v2): PRECISION and QUESTION objects with knows/answer",
+      "items": { "type": "object" }
+    },
+    "validation": {
+      "type": "string",
+      "enum": ["PENDING", "VALIDATED", "REJECTED"]
+    },
+    "turnIndex": { "type": "integer", "description": "Spec 006 v3" },
+    "majorSuit": { "type": "string", "description": "Spec 006 v3" },
+    "suitId": { "type": "string", "description": "Spec 006 v3" },
+    "cardValue": { "type": "string", "description": "Spec 006 v3" },
+    "points": { "type": "integer", "description": "Spec 006 v3" },
+    "votes": {
+      "type": "array",
+      "description": "Spec 007 v4: per-voter structured vote decisions (FR-009/FR-010). Empty for legacy legs.",
+      "items": { "$ref": "#/definitions/VoteDecision" },
+      "example": [
+        {
+          "voter": "Joueur-2",
+          "vote": "NO",
+          "explanationCheck": "OK",
+          "applicabilityCheck": "NOT_APPLICABLE",
+          "justification": "Le scénario suppose une API REST publique, mais le projet n'en expose pas (vérifié via list_directory_tree)"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "VoteDecision": {
+      "type": "object",
+      "required": ["voter", "vote", "explanationCheck", "applicabilityCheck", "justification"],
+      "additionalProperties": false,
+      "properties": {
+        "voter": { "type": "string", "minLength": 1 },
+        "vote": { "type": "string", "enum": ["YES", "NO"] },
+        "explanationCheck": {
+          "type": "string",
+          "enum": ["OK", "INSUFFICIENT"],
+          "description": "Branch (a) of the decision tree: is the scenario sufficiently explained?"
+        },
+        "applicabilityCheck": {
+          "type": "string",
+          "enum": ["OK", "NOT_APPLICABLE"],
+          "description": "Branch (b) of the decision tree: is the scenario applicable to the real project?"
+        },
+        "justification": {
+          "type": "string",
+          "description": "Short free-text reason for the vote (FR-010)"
+        }
+      }
+    }
+  }
+}

@@ -2,12 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import { getCardCatalog, type CardCatalog, type SetDto } from '../services/atelierApi'
+import { getCardCatalog, listAteliers, type AtelierSummaryDto, type CardCatalog, type SetDto } from '../services/atelierApi'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  launch: [payload: { playerCount: number; featureHtml: string; language: string; families: string[] }]
+  launch: [payload: { playerCount: number; featureHtml: string; language: string; families: string[]; inheritFactsFrom?: string }]
 }>()
 
 const playerCount = ref<number | null>(null)
@@ -30,9 +30,25 @@ const language = ref('fr') // FR-015: default French
 const selectedFamilies = ref<string[]>([])
 const openPanels = ref<number[]>([]) // collapsed sets by default (review request)
 
+// ---- spec 007 (FR-007): optional inheritance of a previous atelier's project facts ----
+const ateliersWithFacts = ref<AtelierSummaryDto[]>([])
+const inheritFactsFrom = ref<string | null>(null)
+
 watch(() => props.modelValue, (open) => {
-  if (open) loadCatalog()
+  if (open) {
+    loadCatalog()
+    loadAteliersWithFacts()
+  }
 }, { immediate: true })
+
+async function loadAteliersWithFacts() {
+  try {
+    const all = await listAteliers()
+    ateliersWithFacts.value = all.filter((a) => a.hasProjectFacts)
+  } catch {
+    ateliersWithFacts.value = []
+  }
+}
 
 async function loadCatalog() {
   catalogError.value = ''
@@ -99,7 +115,8 @@ function onLaunch() {
     playerCount: playerCount.value as number,
     featureHtml: featureHtml.value,
     language: language.value,
-    families: [...selectedFamilies.value]
+    families: [...selectedFamilies.value],
+    ...(inheritFactsFrom.value ? { inheritFactsFrom: inheritFactsFrom.value } : {})
   })
   emit('update:modelValue', false)
 }
@@ -139,6 +156,20 @@ function onClose() {
           class="mt-4"
           label="Langue des cartes"
           :items="languageOptions"
+        />
+
+        <v-select
+          v-if="ateliersWithFacts.length"
+          v-model="inheritFactsFrom"
+          data-testid="inherit-facts-select"
+          class="mt-4"
+          label="Réutiliser les faits projet d'un atelier précédent"
+          :items="ateliersWithFacts"
+          item-title="id"
+          item-value="id"
+          clearable
+          hint="Optionnel : les découvertes projet de l'atelier source seront copiées dans la nouvelle partie"
+          persistent-hint
         />
 
         <p class="text-body-2 mt-4 mb-1 d-flex align-center gap-2">

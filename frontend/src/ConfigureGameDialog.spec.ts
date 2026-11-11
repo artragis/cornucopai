@@ -33,7 +33,12 @@ vi.mock('./services/atelierApi', () => ({
         families: [{ id: 'SP', name: 'Spoofing', cardCount: 2 }]
       }
     ]
-  }))
+  })),
+  // spec 007 (R-056): one atelier has project facts, one does not
+  listAteliers: vi.fn(async () => ([
+    { id: 'atelier20261111-100000', createdAt: '2026-11-11T10:00:00Z', playerCount: 4, hasProjectFacts: true },
+    { id: 'atelier20261110-090000', createdAt: '2026-11-10T09:00:00Z', playerCount: 2, hasProjectFacts: false }
+  ]))
 }))
 
 import ConfigureGameDialog from './components/ConfigureGameDialog.vue'
@@ -198,5 +203,26 @@ describe('ConfigureGameDialog', () => {
     expect(chips.exists()).toBe(true)
     expect(chips.text()).toContain('webapp:VE')
     expect(chips.text()).toContain('eop:SP')
+  })
+
+  it('US2 (spec 007, T035, FR-007): shows the inherit-facts dropdown listing only ateliers with facts', async () => {
+    const wrapper = mountDialog()
+    await new Promise((r) => setTimeout(r, 0))
+    const select = wrapper.find('[data-testid="inherit-facts-select"]')
+    expect(select.exists()).toBe(true)
+  })
+
+  it('US2 (spec 007, T035): launch payload carries inheritFactsFrom only when a source is selected', async () => {
+    const wrapper = mountDialog()
+    await new Promise((r) => setTimeout(r, 0))
+    await openAllSets(wrapper)
+    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
+    await wrapper.findComponent({ name: 'VTextField' }).setValue(2)
+    await wrapper.vm.$nextTick()
+    // no source selected -> payload has no inheritFactsFrom
+    await wrapper.find('[data-testid="launch-button"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    const payload = wrapper.emitted('launch')?.[0]?.[0] as Record<string, unknown>
+    expect('inheritFactsFrom' in payload).toBe(false)
   })
 })

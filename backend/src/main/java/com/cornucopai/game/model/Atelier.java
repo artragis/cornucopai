@@ -44,6 +44,8 @@ public class Atelier {
     private List<Tour> tours = new ArrayList<>();
     private Map<String, Integer> scores = new LinkedHashMap<>();
     private List<String> winner = new ArrayList<>();
+    // Spec 007 (R-053): shared project memory — empty on legacy ateliers
+    private List<com.cornucopai.game.memory.ProjectFact> projectFacts = new ArrayList<>();
 
     /** Jackson deserialization constructor. */
     public Atelier() {
@@ -95,4 +97,12 @@ public class Atelier {
     public void setTours(List<Tour> tours) { this.tours = tours; }
     public void setScores(Map<String, Integer> scores) { this.scores = scores; }
     public void setWinner(List<String> winner) { this.winner = winner; }
+
+    // ---- spec 007 accessors (ateliers-api v0.7.0, atelier-schema v0.7.0) ----
+
+    public List<com.cornucopai.game.memory.ProjectFact> projectFacts() { return projectFacts; }
+
+    public void setProjectFacts(List<com.cornucopai.game.memory.ProjectFact> projectFacts) {
+        this.projectFacts = projectFacts == null ? new ArrayList<>() : projectFacts;
+    }
 }

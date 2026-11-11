@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/atelier-schema.json",
+  "title": "Atelier — v0.7.0, spec 007-contextual-game-turns (supersedes v0.6.0 of spec 006)",
+  "description": "Persisted as atelier.json inside the atelier{yyyyMMdd-HHmmss} folder. v0.7.0 (spec 007): additive `projectFacts` array. Legacy ateliers read with an empty list.",
+  "type": "object",
+  "required": ["id", "createdAt", "featureHtml", "playerCount", "players", "deck"],
+  "properties": {
+    "id": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "featureHtml": { "type": "string" },
+    "playerCount": { "type": "integer" },
+    "players": { "type": "array", "items": { "type": "object" } },
+    "turnOrder": { "type": "array", "items": { "type": "string" } },
+    "deck": { "type": "array", "items": { "type": "object" } },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "language": { "type": "string" },
+    "selectedFamilies": { "type": "array", "items": { "type": "string" } },
+    "sets": { "type": "array", "items": { "type": "object" } },
+    "agentConfigs": { "type": "array", "items": { "type": "object" } },
+    "tours": { "type": "array", "items": { "type": "object" } },
+    "scores": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "winner": { "type": "array", "items": { "type": "string" } },
+    "projectFacts": {
+      "type": "array",
+      "description": "Shared project memory of this atelier (spec 007, FR-005/FR-007). Empty for legacy ateliers.",
+      "items": { "$ref": "#/definitions/ProjectFact" },
+      "example": [
+        {
+          "text": "Le projet n'expose pas d'API REST publique (vérifié via list_directory_tree)",
+          "author": "Joueur-2",
+          "turnIndex": 3,
+          "timestamp": "2026-11-11T14:32:10Z"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ProjectFact": {
+      "type": "object",
+      "required": ["text", "author", "turnIndex", "timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "author": { "type": "string", "minLength": 1 },
+        "turnIndex": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
