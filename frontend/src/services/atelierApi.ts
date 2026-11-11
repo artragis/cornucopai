@@ -29,12 +29,40 @@ export interface SetResolutionDto {
   resolvedLanguage: string
 }
 
+export interface LegEntryDto {
+  kind: 'PRECISION' | 'QUESTION' | string
+  author: string
+  text: string
+  knows?: boolean
+  answer?: string
+}
+
 export interface LegDto {
   cardName: string
   scenario: string
   explanation: string
-  precisions: string[]
+  /** @deprecated v1 field, still present in legacy ateliers */
+  precisions?: string[]
   validation: 'PENDING' | 'VALIDATED' | 'REJECTED'
+  // spec 005 v2: structured entries (questions + precisions with knows/answer)
+  entries?: LegEntryDto[]
+  // spec 006 v3 (ateliers-api v0.6.0): additive tour/score fields. Numeric fields are
+  // always serialized by the backend (primitive int, 0 on legacy reads); string fields
+  // are null when absent (legacy ateliers).
+  turnIndex?: number
+  majorSuit?: string | null
+  suitId?: string | null
+  cardValue?: string | null
+  points?: number
+}
+
+export interface TourDto {
+  index: number
+  leader: string
+  majorSuit?: string | null
+  legIndices: number[]
+  winner?: string | null
+  bonusAwarded: boolean
 }
 
 export interface AtelierResponse {
@@ -50,6 +78,10 @@ export interface AtelierResponse {
   deck: CardDto[]
   sets: SetResolutionDto[]
   legs: LegDto[]
+  // spec 006 v0.6.0: scoreboard data (empty/absent on legacy ateliers)
+  tours?: TourDto[]
+  scores?: Record<string, number>
+  winner?: string[]
 }
 
 export interface AtelierSummaryDto {

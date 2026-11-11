@@ -91,7 +91,8 @@ class AtelierStoreTest {
         JsonNode json = mapper.readTree(file.toFile());
         Iterator<String> fields = json.fieldNames();
         assertThat(fields).toIterable()
-                .containsExactlyInAnyOrder("cardName", "scenario", "explanation", "entries", "validation");
+                .containsExactlyInAnyOrder("cardName", "scenario", "explanation", "entries", "validation",
+                        "turnIndex", "majorSuit", "suitId", "cardValue", "points"); // spec 006 v3 additive fields
         assertThat(json.get("cardName").asText()).isEqualTo("Carte-Placeholder-1");
         assertThat(json.get("validation").asText()).isEqualTo("PENDING");
         assertThat(json.get("entries").isArray()).isTrue();
@@ -179,5 +180,46 @@ class AtelierStoreTest {
         // listAteliers skips the legacy file and still returns the good one
         List<Atelier> ateliers = store.listAteliers();
         assertThat(ateliers).extracting(Atelier::id).containsExactly(goodId);
+    }
+
+    @Test
+    void pre006AtelierWithoutTourFieldsLoadsWithEmptyDefaults() throws Exception {
+        // T032 (spec 006, FR-017): a pre-006 atelier.json (real Card deck, no tours/scores/winner)
+        // and a v2 leg file (no v3 fields) must load without error and expose empty/null tour fields
+        AtelierStore store = store();
+        String id = store.createAtelierDir("atelier2026-11-10-000000");
+        Files.writeString(tempDir.resolve(id).resolve("atelier.json"), """
+                {
+                  "id": "atelier2026-11-10-000000",
+                  "createdAt": "2026-11-10T00:00:00Z",
+                  "featureHtml": "<p>pre-006</p>",
+                  "playerCount": 2,
+                  "players": [{"name":"Joueur-1","archetype":"HAPPY"}],
+                  "turnOrder": ["Joueur-1"],
+                  "deck": [{"id":"VE2","value":"2","setId":"webapp","suitId":"VE","suitName":"VE","language":"fr","description":"d"}]
+                }
+                """);
+        Files.writeString(tempDir.resolve(id).resolve("leg-001-joueur-1.json"), """
+                {
+                  "cardName": "VE2",
+                  "scenario": "s",
+                  "explanation": "e",
+                  "entries": [],
+                  "validation": "VALIDATED"
+                }
+                """);
+
+        var loaded = store.loadAtelier(id);
+        assertThat(loaded).isPresent();
+        assertThat(loaded.get().tours()).isEmpty();
+        assertThat(loaded.get().scores()).isEmpty();
+        assertThat(loaded.get().winner()).isEmpty();
+
+        List<Leg> legs = store.loadLegs(id);
+        assertThat(legs).hasSize(1);
+        assertThat(legs.get(0).turnIndex()).isZero(); // primitive default on legacy read
+        assertThat(legs.get(0).points()).isZero();
+        assertThat(legs.get(0).majorSuit()).isNull();
+        assertThat(legs.get(0).validation()).isEqualTo(ValidationStatus.VALIDATED);
     }
 }

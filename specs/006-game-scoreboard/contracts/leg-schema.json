@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/contracts/leg-schema.json",
+  "title": "Leg (tour de jeu) — v3.0.0, spec 006-game-scoreboard (supersedes v2.0.0 of spec 005)",
+  "description": "Each leg is persisted as its own JSON file named leg-{NNN}-{playerSlug}.json inside the atelier folder. v3 (spec 006): ADDITIVE extension of v2 — five new optional fields carry the tour context and the points earned on this leg: turnIndex, majorSuit, suitId, cardValue, points. All are absent on legacy v1/v2 files and read as null/0 (FR-017). The 5 original v2 top-level fields (cardName, scenario, explanation, entries, validation) are unchanged. v1 legacy read (precisions -> entries conversion, author \"inconnu\") still works. cardName is a REAL card id (e.g. VE2) referencing a Card in atelier.json's deck.",
+  "type": "object",
+  "required": ["cardName", "scenario", "explanation", "entries", "validation"],
+  "additionalProperties": false,
+  "properties": {
+    "cardName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Real id of the played card, e.g. VE2 — references a Card in atelier.json deck",
+      "example": "VE2"
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Threat scenario evoked by the player, built from the card's real description"
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The player's explanation of the scenario"
+    },
+    "entries": {
+      "type": "array",
+      "description": "Structured entries of the turn (v2, unchanged): precisions and questions WITH their knows/answer. Empty when the card is first played.",
+      "items": { "$ref": "#/definitions/LegEntry" }
+    },
+    "validation": {
+      "type": "string",
+      "enum": ["PENDING", "VALIDATED", "REJECTED"],
+      "description": "PENDING when written, then VALIDATED iff strictly more than half of the voters answered yes, else REJECTED"
+    },
+    "turnIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "NEW v3 — 1-based index of the tour (trick) this leg belongs to; 0 on legacy reads (field was absent). Always serialized by the backend (primitive int).",
+      "example": 1
+    },
+    "majorSuit": {
+      "type": ["string", "null"],
+      "description": "NEW v3 — suitId of the tour's couleur majeure (e.g. \"VE\"). null when the tour had no non-WC card or on legacy files.",
+      "example": "VE"
+    },
+    "suitId": {
+      "type": ["string", "null"],
+      "description": "NEW v3 — family (suitId) of the played card. \"WC\" for the Cornucopia/Wild Card joker. null on legacy files.",
+      "example": "VE"
+    },
+    "cardValue": {
+      "type": ["string", "null"],
+      "description": "NEW v3 — value of the played card (\"2\"..\"10\", \"J\", \"Q\", \"K\", \"A\"), used for the tour bonus comparison. null on legacy files.",
+      "example": "7"
+    },
+    "points": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "NEW v3 — points earned on this leg: 1 if VALIDATED and the card is in the major suit (WC counts as major suit), plus 1 if this leg also won the tour bonus. 0 otherwise, and 0 on legacy reads. Always serialized (primitive int).",
+      "example": 1
+    }
+  },
+  "definitions": {
+    "LegEntry": {
+      "type": "object",
+      "required": ["kind", "author", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["PRECISION", "QUESTION"],
+          "description": "PRECISION = added remark; QUESTION = question to the card player, carrying knows/answer"
+        },
+        "author": {
+          "type": "string",
+          "description": "Player who added the entry; \"inconnu\" for legacy-converted precisions",
+          "example": "Joueur-1"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Precision text, or the question text"
+        },
+        "knows": {
+          "type": "boolean",
+          "description": "QUESTION only — did the card player answer « Je sais » (true) or « Je sais pas » (false)"
+        },
+        "answer": {
+          "type": "string",
+          "description": "QUESTION only, present iff knows=true — the « Je sais » answer"
+        }
+      }
+    }
+  }
+}

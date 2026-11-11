@@ -3,11 +3,13 @@ package com.cornucopai.game;
 import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.model.Answer;
 import com.cornucopai.game.model.Atelier;
+import com.cornucopai.game.model.CardValueOrder;
 import com.cornucopai.game.model.Leg;
 import com.cornucopai.game.model.LegEntry;
 import com.cornucopai.game.model.Participant;
 import com.cornucopai.game.model.PlayedCard;
 import com.cornucopai.game.model.Reaction;
+import com.cornucopai.game.model.Tour;
 import com.cornucopai.game.model.ValidationStatus;
 import com.cornucopai.game.model.Vote;
 import org.jboss.logging.Logger;
@@ -25,16 +27,21 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * The game master (research R-009, spec FR-005..FR-013): draws the turn order
- * once, then loops over turns — play a card (leg persisted PENDING), collect
- * reactions (precision / question / pass) from each other player, let the card
- * player answer questions, collect votes, and flip the leg to VALIDATED
- * (strict majority of yes among the voters) or REJECTED. The game ends when all
- * hands are empty.
+ * The game master (research R-009, spec FR-005..FR-013) extended by spec 006:
+ * legs are grouped into <b>tours</b> (tricks) — one leg per player still holding
+ * cards per tour. Tour 1 leader is drawn at random; the next tour's leader is the
+ * previous tour's winner (highest major-suit card), or a random draw if all legs of
+ * the tour were REJECTED (clarification 2026-11-10). The first non-WC card of a tour
+ * sets its <b>couleur majeure</b>; a WC card is always treated as the major suit
+ * (joker, FR-004). Scoring: +1 per VALIDATED leg in the major suit, +1 bonus per tour
+ * to the highest major-suit card (FR-006..FR-011).
  */
 public class GameMaster {
 
     private static final Logger LOG = Logger.getLogger(GameMaster.class);
+
+    /** Joker family id — Cornucopia / Wild Card (R-052). */
+    static final String WC_SUIT = "WC";
 
     private final AtelierStore store;
     private final Random random;
@@ -50,14 +57,14 @@ public class GameMaster {
         Map<String, Participant> participants = atelier.players().stream()
                 .collect(Collectors.toMap(Participant::name, Function.identity()));
 
-        // FR-005: draw the turn order once and keep it for the whole game
+        // FR-005: draw the base turn order once and keep it for the whole game
         List<String> order = new ArrayList<>(participants.keySet());
         Collections.shuffle(order, random);
         atelier.setTurnOrder(order);
         store.saveAtelier(atelier.id(), atelier);
-        LOG.infof("Atelier %s — turn order: %s", atelier.id(), order);
+        LOG.infof("Atelier %s — base turn order: %s", atelier.id(), order);
 
-        // Spec 003 (R-018): deal the real-card deck (already built+shuffled by CardDeckService) round-robin
+        // Spec 003 (R-018): deal the real-card deck round-robin over the base order
         Map<String, Deque<Card>> hands = new LinkedHashMap<>();
         for (String player : order) {
             hands.put(player, new ArrayDeque<>());
@@ -68,47 +75,99 @@ public class GameMaster {
             i++;
         }
 
+        // Spec 006: tour 1 leader drawn at random (FR-001, clarification 2026-11-10)
+        String leader = order.get(random.nextInt(order.size()));
         int turn = 0;
-        int pointer = 0;
-        while (hands.values().stream().anyMatch(h -> !h.isEmpty())) {
-            String current = nextPlayerWithCards(order, hands, pointer);
-            if (current == null) {
-                break;
-            }
-            pointer = (order.indexOf(current) + 1) % order.size();
-            turn++;
-            runTurn(atelier, byName, participants, hands, order, current, turn);
+        int tourIndex = 0;
+        List<Tour> tours = new ArrayList<>();
+        Map<String, Integer> scores = new LinkedHashMap<>();
+        for (String p : order) {
+            scores.put(p, 0);
         }
 
+        while (hands.values().stream().anyMatch(h -> !h.isEmpty())) {
+            tourIndex++;
+            // build the tour's player sequence: leader first, then the base order, skipping empty hands
+            List<String> tourPlayers = new ArrayList<>();
+            int leaderIdx = order.indexOf(leader);
+            for (int k = 0; k < order.size(); k++) {
+                String p = order.get((leaderIdx + k) % order.size());
+                if (!hands.get(p).isEmpty()) {
+                    tourPlayers.add(p);
+                }
+            }
+            if (tourPlayers.isEmpty()) {
+                break;
+            }
+
+            String majorSuit = null;
+            List<Integer> legIndices = new ArrayList<>();
+            List<LegPlay> plays = new ArrayList<>();
+            for (String current : tourPlayers) {
+                turn++;
+                legIndices.add(turn);
+                Card card = hands.get(current).poll();
+                // couleur majeure: first non-WC card of the tour (FR-002/FR-003); WC led shifts to next non-WC
+                if (majorSuit == null && !WC_SUIT.equals(card.suitId())) {
+                    majorSuit = card.suitId();
+                }
+                LegPlay play = runTurn(atelier, byName, participants, order, current, card, turn, tourIndex);
+                plays.add(play);
+            }
+
+            closeTour(atelier, tourIndex, leader, majorSuit, legIndices, plays, scores, tours);
+
+            // next leader = tour winner, or random if all legs REJECTED (no winner)
+            Tour justClosed = tours.get(tours.size() - 1);
+            if (justClosed.winner() != null) {
+                leader = justClosed.winner();
+            } else {
+                leader = order.get(random.nextInt(order.size()));
+            }
+        }
+
+        // final scores + winner (FR-011): max score, ties included
+        atelier.setTours(tours);
+        atelier.setScores(scores);
+        int max = scores.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        List<String> winners = scores.entrySet().stream()
+                .filter(e -> e.getValue() == max)
+                .map(Map.Entry::getKey)
+                .toList();
+        atelier.setWinner(winners);
         atelier.setFinishedAt(Instant.now());
         store.saveAtelier(atelier.id(), atelier);
-        LOG.infof("Atelier %s finished after %d legs", atelier.id(), turn);
+        LOG.infof("Atelier %s finished after %d legs in %d tours — winner(s): %s (scores %s)",
+                atelier.id(), turn, tourIndex, winners, scores);
         return atelier;
     }
 
-    private String nextPlayerWithCards(List<String> order, Map<String, Deque<Card>> hands, int pointer) {
-        for (int i = 0; i < order.size(); i++) {
-            String candidate = order.get((pointer + i) % order.size());
-            if (!hands.get(candidate).isEmpty()) {
-                return candidate;
-            }
-        }
-        return null;
+    /** One played card + its player, so the tour loop can finalize scoring. */
+    private record LegPlay(String player, Card card, Leg leg, int turn) {
     }
 
-    private void runTurn(Atelier atelier, Map<String, PlayerAgent> byName, Map<String, Participant> participants,
-                         Map<String, Deque<Card>> hands, List<String> order, String current, int turn) {
+    /**
+     * Runs one leg: play card (persisted PENDING with v3 fields), collect reactions,
+     * answer questions, collect votes, flip validation. Returns the play for tour
+     * finalization. majorSuit may still be null here (set retroactively at tour close).
+     */
+    private LegPlay runTurn(Atelier atelier, Map<String, PlayerAgent> byName,
+                            Map<String, Participant> participants, List<String> order,
+                            String current, Card card, int turn, int tourIndex) {
         PlayerAgent cardAgent = byName.get(current);
         Participant cardPlayer = participants.get(current);
-        Card card = hands.get(current).poll();
 
-        // FR-006/FR-007: the current player plays a real Card (id+description) + scenario + explanation; leg persisted PENDING
         PlayedCard played = cardAgent.playCard(card, atelier.featureHtml());
         Leg leg = new Leg(played.cardName(), played.scenario(), played.explanation());
+        // spec 006 v3 fields known at play time (FR-018)
+        leg.setTurnIndex(tourIndex);
+        leg.setSuitId(card.suitId());
+        leg.setCardValue(card.value());
         store.saveLeg(atelier.id(), turn, current, leg);
-        LOG.infof("Turn %d — %s plays %s (%s)", turn, current, leg.cardName(), leg.scenario());
+        LOG.infof("Tour %d, turn %d — %s plays %s (%s, suit=%s, value=%s)",
+                tourIndex, turn, current, leg.cardName(), leg.scenario(), card.suitId(), card.value());
 
-        // FR-008..FR-010: each other player reacts, one by one
+        // FR-008..FR-010: each other player in the tour reacts, one by one
         for (String otherName : order) {
             if (otherName.equals(current)) {
                 continue;
@@ -118,7 +177,6 @@ public class GameMaster {
             Reaction reaction = other.react(leg, cardPlayer, atelier.featureHtml(), true);
             while (true) {
                 if (reaction instanceof Reaction.Precision precision) {
-                    // spec 005 v2 (R-037): precisions and Q&A are structured entries with their author
                     leg.addEntry(LegEntry.precision(otherName, precision.text()));
                     store.saveLeg(atelier.id(), turn, current, leg);
                     LOG.infof("Turn %d — %s adds a precision", turn, otherName);
@@ -135,10 +193,8 @@ public class GameMaster {
                         LOG.infof("Turn %d — %s asked, %s knows: %s", turn, otherName, current, knows.answer());
                         break;
                     }
-                    // spec 005: record the unanswered question too (knows=false), then re-ask without questions
                     leg.addEntry(LegEntry.question(otherName, question.text(), false, null));
                     store.saveLeg(atelier.id(), turn, current, leg);
-                    // "Je sais pas": re-ask the same player, who can no longer ask questions
                     LOG.infof("Turn %d — %s asked, %s does not know; re-asking %s without questions",
                             turn, otherName, current, otherName);
                     questionsAllowed = false;
@@ -165,5 +221,60 @@ public class GameMaster {
         leg.setValidation(yes * 2 > voters ? ValidationStatus.VALIDATED : ValidationStatus.REJECTED);
         store.saveLeg(atelier.id(), turn, current, leg);
         LOG.infof("Turn %d — vote %d/%d yes → %s", turn, yes, voters, leg.validation());
+        return new LegPlay(current, card, leg, turn);
+    }
+
+    /**
+     * Closes a tour: sets the final majorSuit on every leg of the tour, computes the
+     * scenario point per leg (+1 if VALIDATED and in the major suit — WC counts as
+     * major, FR-004/FR-006), awards the +1 bonus to the highest major-suit card
+     * (FR-009, CardValueOrder), updates scores, persists legs + the Tour.
+     */
+    private void closeTour(Atelier atelier, int tourIndex, String leader, String majorSuit,
+                           List<Integer> legIndices, List<LegPlay> plays,
+                           Map<String, Integer> scores, List<Tour> tours) {
+        String winner = null;
+        boolean bonusAwarded = false;
+        int bestRank = -1;
+        LegPlay bestPlay = null;
+
+        for (LegPlay play : plays) {
+            Leg leg = play.leg();
+            leg.setMajorSuit(majorSuit);
+            boolean inMajor = majorSuit != null
+                    && (majorSuit.equals(play.card().suitId()) || WC_SUIT.equals(play.card().suitId()));
+            int points = (leg.validation() == ValidationStatus.VALIDATED && inMajor) ? 1 : 0;
+            leg.setPoints(points);
+            scores.merge(play.player(), points, Integer::sum);
+
+            // bonus: highest card among major-suit cards (WC counts as major)
+            if (inMajor) {
+                int rank = CardValueOrder.rank(play.card().value());
+                if (rank > bestRank) {
+                    bestRank = rank;
+                    bestPlay = play;
+                }
+            }
+        }
+
+        // clarification 2026-11-10: if ALL legs of the tour were REJECTED, there is no
+        // tour winner — the next leader is drawn at random and no bonus is awarded
+        boolean anyValidated = plays.stream().anyMatch(p -> p.leg().validation() == ValidationStatus.VALIDATED);
+        if (bestPlay != null && anyValidated) {
+            winner = bestPlay.player();
+            bonusAwarded = true;
+            bestPlay.leg().setPoints(bestPlay.leg().points() + 1);
+            scores.merge(winner, 1, Integer::sum);
+        }
+
+        // re-persist legs with final majorSuit + points, then the atelier with the new tour
+        for (LegPlay play : plays) {
+            store.saveLeg(atelier.id(), play.turn(), play.player(), play.leg());
+        }
+        Tour tour = new Tour(tourIndex, leader, majorSuit, legIndices, winner, bonusAwarded);
+        tours.add(tour);
+        atelier.setTours(new ArrayList<>(tours));
+        store.saveAtelier(atelier.id(), atelier);
+        LOG.infof("Tour %d closed — majorSuit=%s, winner=%s, bonus=%s", tourIndex, majorSuit, winner, bonusAwarded);
     }
 }

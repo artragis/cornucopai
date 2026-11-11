@@ -69,6 +69,15 @@ class AtelierResourceTest {
                 .body("legs.validation", everyItem(anyOf(is("VALIDATED"), is("REJECTED"))))
                 .body("legs.validation", not(hasItem("PENDING")))
                 .body("finishedAt", notNullValue())
+                // spec 006 v0.6.0: tours, scores, winner, and v3 leg fields (T017)
+                .body("tours.size()", is(1))
+                .body("tours[0].majorSuit", is("VE"))
+                .body("tours[0].leader", notNullValue())
+                .body("scores", notNullValue())
+                .body("winner", notNullValue())
+                .body("legs.turnIndex", everyItem(is(1)))
+                .body("legs.suitId", everyItem(is("VE")))
+                .body("legs.points", everyItem(anyOf(is(0), is(1), is(2))))
                 .extract().path("id");
 
         // every leg's cardName references a real card present in the persisted deck
@@ -96,7 +105,8 @@ class AtelierResourceTest {
             for (Path legFile : legFiles) {
                 JsonNode json = mapper.readTree(legFile.toFile());
                 assertThat(json.fieldNames()).toIterable().containsExactlyInAnyOrder(
-                        "cardName", "scenario", "explanation", "entries", "validation");
+                        "cardName", "scenario", "explanation", "entries", "validation",
+                        "turnIndex", "majorSuit", "suitId", "cardValue", "points"); // spec 006 v3
             }
         }
     }

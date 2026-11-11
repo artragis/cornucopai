@@ -21,10 +21,14 @@ const featureHtml = computed(() => editor.value?.getHTML() ?? '')
 const isFeatureEmpty = computed(() => featureHtml.value.replace(/<[^>]*>/g, '').trim().length === 0)
 
 // ---- card catalog + family selection (spec 003) ----
+// Array model + :value per checkbox = Vuetify's NATIVE checkbox-group pattern:
+// the visual checked state is managed by Vuetify itself (model-value.includes(value)).
+// The old controlled-boolean pattern desynchronized the visual state (review: "Cloud").
 const catalog = ref<CardCatalog | null>(null)
 const catalogError = ref('')
 const language = ref('fr') // FR-015: default French
-const selectedFamilies = ref<Set<string>>(new Set())
+const selectedFamilies = ref<string[]>([])
+const openPanels = ref<number[]>([]) // collapsed sets by default (review request)
 
 watch(() => props.modelValue, (open) => {
   if (open) loadCatalog()
@@ -44,23 +48,8 @@ function familyKey(setId: string, familyId: string): string {
   return `${setId}:${familyId}`
 }
 
-function isFamilySelected(setId: string, familyId: string): boolean {
-  return selectedFamilies.value.has(familyKey(setId, familyId))
-}
-
-function toggleFamily(setId: string, familyId: string, selected?: boolean) {
-  const key = familyKey(setId, familyId)
-  const next = new Set(selectedFamilies.value)
-  const target = selected ?? !next.has(key)
-  if (target) next.add(key)
-  else next.delete(key)
-  selectedFamilies.value = next
-}
-
 function removeFamily(key: string) {
-  const next = new Set(selectedFamilies.value)
-  next.delete(key)
-  selectedFamilies.value = next
+  selectedFamilies.value = selectedFamilies.value.filter((k) => k !== key)
 }
 
 function allFamiliesOf(set: SetDto): string[] {
@@ -68,16 +57,26 @@ function allFamiliesOf(set: SetDto): string[] {
 }
 
 function isSetFullySelected(set: SetDto): boolean {
-  return allFamiliesOf(set).every((k) => selectedFamilies.value.has(k))
+  return allFamiliesOf(set).every((k) => selectedFamilies.value.includes(k))
+}
+
+function isSetPartiallySelected(set: SetDto): boolean {
+  const n = selectedInSet(set)
+  return n > 0 && n < set.families.length
+}
+
+function selectedInSet(set: SetDto): number {
+  return allFamiliesOf(set).filter((k) => selectedFamilies.value.includes(k)).length
 }
 
 function toggleSet(set: SetDto, selected?: boolean) {
   const keys = allFamiliesOf(set)
-  const next = new Set(selectedFamilies.value)
   const target = selected ?? !isSetFullySelected(set)
-  if (target) keys.forEach((k) => next.add(k))
-  else keys.forEach((k) => next.delete(k))
-  selectedFamilies.value = next
+  if (target) {
+    selectedFamilies.value = [...new Set([...selectedFamilies.value, ...keys])]
+  } else {
+    selectedFamilies.value = selectedFamilies.value.filter((k) => !keys.includes(k))
+  }
 }
 
 const languageOptions = computed(() => catalog.value?.availableLanguages?.length
@@ -85,12 +84,12 @@ const languageOptions = computed(() => catalog.value?.availableLanguages?.length
   : ['fr'])
 
 const canLaunch = computed(() =>
-  (playerCount.value ?? 0) >= 2 && !isFeatureEmpty.value && selectedFamilies.value.size >= 1)
+  (playerCount.value ?? 0) >= 2 && !isFeatureEmpty.value && selectedFamilies.value.length >= 1)
 
 const errorMessage = computed(() => {
   if ((playerCount.value ?? 0) < 2) return 'Il faut au moins 2 joueurs.'
   if (isFeatureEmpty.value) return 'Décrivez la feature à analyser.'
-  if (selectedFamilies.value.size < 1) return 'Sélectionnez au moins une famille de cartes.'
+  if (selectedFamilies.value.length < 1) return 'Sélectionnez au moins une famille de cartes.'
   return ''
 })
 
@@ -145,12 +144,12 @@ function onClose() {
         <p class="text-body-2 mt-4 mb-1 d-flex align-center gap-2">
           Familles de cartes
           <v-chip
-            v-if="selectedFamilies.size"
+            v-if="selectedFamilies.length"
             size="small"
             color="primary"
             data-testid="selected-count"
           >
-            {{ selectedFamilies.size }} sélectionnée{{ selectedFamilies.size > 1 ? 's' : '' }}
+            {{ selectedFamilies.length }} sélectionnée{{ selectedFamilies.length > 1 ? 's' : '' }}
           </v-chip>
         </p>
         <v-alert
@@ -167,40 +166,65 @@ function onClose() {
           class="border rounded pa-2"
           data-testid="card-family-selector"
         >
-          <div
-            v-for="set in catalog.sets"
-            :key="set.id"
-            class="mb-2"
+          <!-- arbre dépliable par set (demande review) -->
+          <v-expansion-panels
+            v-model="openPanels"
+            variant="accordion"
+            multiple
           >
-            <v-checkbox
-              :model-value="isSetFullySelected(set)"
-              :data-testid="`set-${set.id}`"
-              :label="`${set.id} ${set.version} (${set.totalCards} cartes)`"
-              density="compact"
-              hide-details
-              @update:model-value="(v: boolean|null) => toggleSet(set, !!v)"
-            />
-            <div class="ml-6">
-              <v-checkbox
-                v-for="family in set.families"
-                :key="family.id"
-                :model-value="isFamilySelected(set.id, family.id)"
-                :data-testid="`family-${set.id}:${family.id}`"
-                :label="`${family.name} (${family.cardCount})`"
-                density="compact"
-                hide-details
-                @update:model-value="(v: boolean|null) => toggleFamily(set.id, family.id, !!v)"
-              />
-            </div>
-          </div>
+            <v-expansion-panel
+              v-for="set in catalog.sets"
+              :key="set.id"
+              :data-testid="`set-panel-${set.id}`"
+            >
+              <v-expansion-panel-title>
+                <div class="d-flex align-center flex-wrap ga-2">
+                  <strong>{{ set.id }} {{ set.version }}</strong>
+                  <span class="text-caption">({{ set.totalCards }} cartes)</span>
+                  <v-chip
+                    v-if="selectedInSet(set)"
+                    size="x-small"
+                    color="primary"
+                  >
+                    {{ selectedInSet(set) }}/{{ set.families.length }}
+                  </v-chip>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <!-- tout sélectionner : contrôlé (pattern select-all Vuetify) -->
+                <v-checkbox
+                  :model-value="isSetFullySelected(set)"
+                  :indeterminate="isSetPartiallySelected(set)"
+                  :data-testid="`set-${set.id}`"
+                  :label="`Tout sélectionner (${set.id})`"
+                  density="compact"
+                  hide-details
+                  @update:model-value="(v: boolean|null) => toggleSet(set, !!v)"
+                />
+                <!-- familles : pattern natif v-model tableau + :value (état visuel géré par Vuetify) -->
+                <div class="ml-6">
+                  <v-checkbox
+                    v-for="family in set.families"
+                    :key="family.id"
+                    v-model="selectedFamilies"
+                    :value="familyKey(set.id, family.id)"
+                    :data-testid="`family-${set.id}:${family.id}`"
+                    :label="`${family.name} (${family.cardCount})`"
+                    density="compact"
+                    hide-details
+                  />
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </div>
         <div
-          v-if="selectedFamilies.size"
+          v-if="selectedFamilies.length"
           class="d-flex flex-wrap gap-1 mt-2"
           data-testid="selected-families"
         >
           <v-chip
-            v-for="f in [...selectedFamilies]"
+            v-for="f in selectedFamilies"
             :key="f"
             size="small"
             closable

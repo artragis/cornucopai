@@ -1,4 +1,5 @@
 .vibe
+.local
 .specify/scripts/python/__pycache__
 
 # Java / Maven (backend/)

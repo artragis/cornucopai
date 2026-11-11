@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A game session (workshop). Persisted as {@code atelier.json} inside its
@@ -38,6 +40,10 @@ public class Atelier {
     private List<String> selectedFamilies = new ArrayList<>();
     private List<SetResolution> sets = new ArrayList<>();
     private List<AgentLlmConfig> agentConfigs = new ArrayList<>();
+    // Spec 006 (R-048): tours, per-player scores, winner — empty on legacy ateliers
+    private List<Tour> tours = new ArrayList<>();
+    private Map<String, Integer> scores = new LinkedHashMap<>();
+    private List<String> winner = new ArrayList<>();
 
     /** Jackson deserialization constructor. */
     public Atelier() {
@@ -79,4 +85,14 @@ public class Atelier {
     public void setSelectedFamilies(List<String> selectedFamilies) { this.selectedFamilies = selectedFamilies; }
     public void setSets(List<SetResolution> sets) { this.sets = sets; }
     public void setAgentConfigs(List<AgentLlmConfig> agentConfigs) { this.agentConfigs = agentConfigs; }
+
+    // ---- spec 006 accessors (ateliers-api v0.6.0) ----
+
+    public List<Tour> tours() { return tours; }
+    public Map<String, Integer> scores() { return scores; }
+    public List<String> winner() { return winner; }
+
+    public void setTours(List<Tour> tours) { this.tours = tours; }
+    public void setScores(Map<String, Integer> scores) { this.scores = scores; }
+    public void setWinner(List<String> winner) { this.winner = winner; }
 }

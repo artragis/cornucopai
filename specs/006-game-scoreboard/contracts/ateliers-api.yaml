@@ -1,0 +1,275 @@
+# API contract for ateliers — UPDATED by feature 006-game-scoreboard
+# (supersedes specs/005-leg-qa-structure/contracts/ateliers-api.yaml v0.5.0)
+# Changes (spec 006, FR-012, research R-051):
+#   - The Atelier schema gains `tours` (array of Tour), `scores` (map playerName -> int),
+#     and `winner` (array of player names, empty while running). All additive; legacy
+#     ateliers return empty/null and the frontend shows "données partielles" (FR-017).
+#   - The Leg schema gains optional `turnIndex`, `majorSuit`, `suitId`, `cardValue`,
+#     `points` (see leg-schema.json v3.0.0).
+#   - Tour schema: { index, leader, majorSuit?, legIndices[], winner?, bonusAwarded }.
+# Everything else (POST body, agents[], agentConfigs, GET list) is unchanged from v0.5.0.
+# The game still runs synchronously on POST.
+openapi: 3.0.3
+info:
+  title: CornucopAI Ateliers API
+  version: 0.6.0
+  description: >
+    Create and run a Cornucopia threat-modeling workshop played by LLM-powered AI
+    agents. Spec 006 adds the scoreboard: tours with their couleur majeure, per-player
+    scores, and the winner, returned by GET /api/ateliers/{id}.
+paths:
+  /api/ateliers:
+    post:
+      summary: Configure and launch a game (runs synchronously, spec 002-004)
+      operationId: createAtelier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAtelierRequest'
+            example:
+              playerCount: 4
+              featureHtml: "<p>Analyse de la feature <b>login OAuth2</b></p>"
+              language: fr
+              families: ["webapp:VE"]
+      responses:
+        '201':
+          description: Atelier created, game fully played, tours/scores/winner computed and persisted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atelier'
+        '400':
+          description: Invalid request (playerCount < 2, empty featureHtml, empty/unknown families, invalid agent config)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List all ateliers (id, createdAt, playerCount), newest first
+      operationId: listAteliers
+      responses:
+        '200':
+          description: List of atelier summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AtelierSummary'
+  /api/ateliers/{id}:
+    get:
+      summary: Full atelier detail — legs, tours with couleur majeure, per-player scores, winner (spec 006 FR-012)
+      operationId: getAtelier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          example: atelier20261110-111343
+      responses:
+        '200':
+          description: Atelier detail (tours/scores/winner empty or absent for legacy ateliers — FR-017)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atelier'
+        '404':
+          description: Unknown atelier id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    CreateAtelierRequest:
+      type: object
+      required: [playerCount, featureHtml, families]
+      properties:
+        playerCount:
+          type: integer
+          minimum: 2
+          example: 4
+        featureHtml:
+          type: string
+          minLength: 1
+          example: "<p>Analyse de la feature <b>login OAuth2</b></p>"
+        language:
+          type: string
+          default: fr
+          description: Chosen language, lowercase; defaults to French. Falls back per set to "en".
+          example: fr
+        families:
+          type: array
+          minItems: 1
+          description: Selected families as "setId:familyId" pairs. At least one required.
+          items: { type: string }
+          example: ["webapp:VE"]
+        agents:
+          type: array
+          description: OPTIONAL per-player LLM provider configs (spec 004). At most playerCount entries.
+          items:
+            $ref: '#/components/schemas/AgentConfig'
+    AgentConfig:
+      type: object
+      required: [providerType]
+      properties:
+        name: { type: string, example: Joueur-1 }
+        archetype: { $ref: '#/components/schemas/Archetype' }
+        providerType:
+          type: string
+          enum: [OPENAI_COMPATIBLE, ACP]
+        baseUrl: { type: string, example: "http://localhost:1235/v1" }
+        apiKey: { type: string, nullable: true }
+        modelName: { type: string, nullable: true }
+        acpProvider:
+          type: string
+          enum: [github-copilot, mistral-vibe]
+        command: { type: string, nullable: true }
+    AgentLlmConfig:
+      type: object
+      required: [providerType]
+      properties:
+        providerType: { type: string, enum: [OPENAI_COMPATIBLE, ACP] }
+        baseUrl: { type: ["string", "null"] }
+        apiKey: { type: ["string", "null"] }
+        modelName: { type: ["string", "null"] }
+        acpProvider: { type: ["string", "null"], enum: [github-copilot, mistral-vibe, null] }
+        command: { type: ["string", "null"] }
+    Card:
+      type: object
+      required: [id, value, setId, suitId, suitName, language, description]
+      properties:
+        id: { type: string, example: VE2 }
+        value: { type: string, example: "2" }
+        setId: { type: string, example: webapp }
+        suitId: { type: string, description: Family id; "WC" = Cornucopia/Wild Card joker, example: VE }
+        suitName: { type: string, example: "DATA VALIDATION & ENCODING" }
+        language: { type: string, example: fr }
+        description: { type: string }
+        url: { type: string, nullable: true }
+        misc: { type: string, nullable: true }
+    SetResolution:
+      type: object
+      required: [id, resolvedLanguage]
+      properties:
+        id: { type: string, example: webapp }
+        resolvedLanguage: { type: string, example: fr }
+    Archetype:
+      type: string
+      enum: [GRUMPY, HAPPY, GREEDY, PROF]
+    ValidationStatus:
+      type: string
+      enum: [PENDING, VALIDATED, REJECTED]
+    Participant:
+      type: object
+      required: [name, archetype]
+      properties:
+        name: { type: string, example: Joueur-1 }
+        archetype: { $ref: '#/components/schemas/Archetype' }
+    Leg:
+      type: object
+      description: One played card, persisted as leg-{NNN}-{playerSlug}.json (leg-schema.json v3.0.0). v3 adds optional turnIndex/majorSuit/suitId/cardValue/points; absent on legacy files.
+      required: [cardName, scenario, explanation, entries, validation]
+      properties:
+        cardName: { type: string, example: VE2 }
+        scenario: { type: string }
+        explanation: { type: string }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/LegEntry' }
+        validation: { $ref: '#/components/schemas/ValidationStatus' }
+        turnIndex: { type: integer, minimum: 0, description: "NEW v3 — tour this leg belongs to; 0 on legacy reads (primitive int, always serialized)" }
+        majorSuit: { type: ["string", "null"], description: "NEW v3 — couleur majeure of the tour; null if undetermined or legacy" }
+        suitId: { type: ["string", "null"], description: "NEW v3 — family of the played card (\"WC\" = joker); null on legacy" }
+        cardValue: { type: ["string", "null"], description: "NEW v3 — card value for bonus comparison; null on legacy" }
+        points: { type: integer, minimum: 0, description: "NEW v3 — points earned on this leg (0, 1, or 2 with bonus); 0 on legacy reads (primitive int)" }
+    LegEntry:
+      type: object
+      required: [kind, author, text]
+      properties:
+        kind: { type: string, enum: [PRECISION, QUESTION] }
+        author: { type: string, example: Joueur-1 }
+        text: { type: string, minLength: 1 }
+        knows: { type: boolean, description: "QUESTION only" }
+        answer: { type: string, description: "QUESTION only, present iff knows=true" }
+    Tour:
+      type: object
+      description: NEW spec 006 — one trick (passe complète). Persisted in atelier.json.
+      required: [index, leader, legIndices, bonusAwarded]
+      properties:
+        index: { type: integer, minimum: 1, example: 1 }
+        leader: { type: string, description: "Player who opened this tour", example: Joueur-2 }
+        majorSuit:
+          type: ["string", "null"]
+          description: "Couleur majeure (suitId) — first non-WC card of the tour; null if all WC"
+          example: VE
+        legIndices:
+          type: array
+          description: 1-based turn indices of the legs in this tour (one per player with cards)
+          items: { type: integer }
+          example: [1, 2, 3, 4]
+        winner:
+          type: ["string", "null"]
+          description: "Player who won the +1 bonus (highest major-suit card); null if none"
+          example: Joueur-3
+        bonusAwarded: { type: boolean, description: "Whether the +1 tour bonus was given" }
+    Atelier:
+      type: object
+      required: [id, createdAt, featureHtml, playerCount, players, turnOrder, language, selectedFamilies, deck, sets, agentConfigs, legs]
+      properties:
+        id: { type: string, example: atelier20261110-111343 }
+        createdAt: { type: string, format: date-time }
+        featureHtml: { type: string }
+        playerCount: { type: integer }
+        players:
+          type: array
+          items: { $ref: '#/components/schemas/Participant' }
+        turnOrder:
+          type: array
+          items: { type: string }
+          description: Base order shuffled once at game start; per-tour leader rotates from it
+        language: { type: string, example: fr }
+        selectedFamilies:
+          type: array
+          items: { type: string }
+          example: ["webapp:VE"]
+        deck:
+          type: array
+          items: { $ref: '#/components/schemas/Card' }
+        sets:
+          type: array
+          items: { $ref: '#/components/schemas/SetResolution' }
+        agentConfigs:
+          type: array
+          items: { $ref: '#/components/schemas/AgentLlmConfig' }
+        legs:
+          type: array
+          items: { $ref: '#/components/schemas/Leg' }
+        tours:
+          type: array
+          description: "NEW spec 006 — all tours with their couleur majeure and winner. Empty/absent for legacy ateliers (FR-017)."
+          items: { $ref: '#/components/schemas/Tour' }
+        scores:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+          description: "NEW spec 006 — total points per player (scenario + bonus). Empty/absent for legacy ateliers."
+          example: { "Joueur-1": 3, "Joueur-2": 5 }
+        winner:
+          type: array
+          items: { type: string }
+          description: "NEW spec 006 — player(s) with the highest score at game end (ties included). Empty while the game is running or for legacy ateliers."
+          example: ["Joueur-2"]
+    AtelierSummary:
+      type: object
+      required: [id, createdAt, playerCount]
+      properties:
+        id: { type: string }
+        createdAt: { type: string, format: date-time }
+        playerCount: { type: integer }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, example: "Unknown atelier id: foo" }

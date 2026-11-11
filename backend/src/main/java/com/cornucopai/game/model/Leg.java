@@ -28,6 +28,14 @@ public class Leg {
     private String explanation;
     private List<LegEntry> entries;
     private ValidationStatus validation;
+    // Spec 006 v3 (R-047): additive tour/score fields. Numeric fields are primitive int:
+    // Jackson defaults a missing JSON field to 0 on legacy reads, and 0 already means
+    // "no tour / no points". String fields stay nullable (null = absent in legacy files).
+    private int turnIndex;
+    private String majorSuit;
+    private String suitId;
+    private String cardValue;
+    private int points;
 
     /** Jackson deserialization constructor. */
     public Leg() {
@@ -117,4 +125,18 @@ public class Leg {
     public void setValidation(ValidationStatus validation) {
         this.validation = validation;
     }
+
+    // ---- spec 006 v3 accessors (leg-schema.json v3.0.0) ----
+
+    public int turnIndex() { return turnIndex; }
+    public String majorSuit() { return majorSuit; }
+    public String suitId() { return suitId; }
+    public String cardValue() { return cardValue; }
+    public int points() { return points; }
+
+    public void setTurnIndex(int turnIndex) { this.turnIndex = turnIndex; }
+    public void setMajorSuit(String majorSuit) { this.majorSuit = majorSuit; }
+    public void setSuitId(String suitId) { this.suitId = suitId; }
+    public void setCardValue(String cardValue) { this.cardValue = cardValue; }
+    public void setPoints(int points) { this.points = points; }
 }

@@ -72,8 +72,20 @@ function playerCountInput(wrapper: ReturnType<typeof mountDialog>) {
   return wrapper.find('[data-testid="player-count-input"] input')
 }
 
+/** Sets are collapsed by default — open every panel before touching the checkboxes. */
+async function openAllSets(wrapper: ReturnType<typeof mountDialog>) {
+  for (const title of wrapper.findAll('.v-expansion-panel-title')) {
+    await title.trigger('click')
+  }
+  await wrapper.vm.$nextTick()
+}
+
+function checkedInput(wrapper: ReturnType<typeof mountDialog>, testid: string): HTMLInputElement {
+  return wrapper.find(`[data-testid="${testid}"] input`).element as HTMLInputElement
+}
+
 describe('ConfigureGameDialog', () => {
-  it('renders player count, WYSIWYG, language select (default fr) and the hierarchical set→familles selector', async () => {
+  it('renders player count, WYSIWYG, language select (default fr) and the collapsible set→familles tree', async () => {
     const wrapper = mountDialog()
     await wrapper.vm.$nextTick()
     await new Promise((r) => setTimeout(r, 0)) // let the catalog promise resolve
@@ -81,6 +93,10 @@ describe('ConfigureGameDialog', () => {
     expect(wrapper.find('.editor-content').exists()).toBe(true)
     expect(wrapper.find('[data-testid="language-select"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="card-family-selector"]').exists()).toBe(true)
+    // sets are collapsed by default; their checkboxes appear once the panel is open
+    expect(wrapper.find('[data-testid="set-panel-webapp"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="set-panel-eop"]').exists()).toBe(true)
+    await openAllSets(wrapper)
     expect(wrapper.find('[data-testid="set-webapp"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="set-eop"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="family-webapp:VE"]').exists()).toBe(true)
@@ -101,7 +117,9 @@ describe('ConfigureGameDialog', () => {
     const wrapper = mountDialog()
     await new Promise((r) => setTimeout(r, 0))
     await playerCountInput(wrapper).setValue(4)
-    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', true)
+    await openAllSets(wrapper)
+    // native array pattern: the checkbox emits the new model-value array
+    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
     const button = wrapper.find('[data-testid="launch-button"]')
     expect(button.attributes('disabled')).toBeUndefined()
     await button.trigger('click')
@@ -115,11 +133,37 @@ describe('ConfigureGameDialog', () => {
     })
   })
 
+  it('renders the checked state on the family checkbox (bug review: visual state was lost)', async () => {
+    const wrapper = mountDialog()
+    await new Promise((r) => setTimeout(r, 0))
+    await openAllSets(wrapper)
+    expect(checkedInput(wrapper, 'family-webapp:VE').checked).toBe(false)
+    expect(wrapper.find('[data-testid="family-webapp:VE"]').html()).toContain('mdi-checkbox-blank-outline')
+    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
+    await wrapper.vm.$nextTick()
+    expect(checkedInput(wrapper, 'family-webapp:VE').checked).toBe(true)
+    // the checked visual comes from the mdi icon glyph (requires @mdi/font loaded in main.ts)
+    expect(wrapper.find('[data-testid="family-webapp:VE"]').html()).toContain('mdi-checkbox-marked')
+  })
+
+  it('the set header shows indeterminate state when only some families are selected', async () => {
+    const wrapper = mountDialog()
+    await new Promise((r) => setTimeout(r, 0))
+    await openAllSets(wrapper)
+    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
+    await wrapper.vm.$nextTick()
+    const setCb = wrapper.findComponent('[data-testid="set-webapp"]')
+    expect(setCb.props('indeterminate')).toBe(true)
+    expect(setCb.props('modelValue')).toBe(false)
+  })
+
   it('checking a set selects all its families', async () => {
     const wrapper = mountDialog()
     await new Promise((r) => setTimeout(r, 0))
     await playerCountInput(wrapper).setValue(2)
+    await openAllSets(wrapper)
     await wrapper.findComponent('[data-testid="set-webapp"]').vm.$emit('update:modelValue', true)
+    await wrapper.vm.$nextTick()
     await wrapper.find('[data-testid="launch-button"]').trigger('click')
     const payload = wrapper.emitted('launch')![0][0] as { families: string[] }
     expect(payload.families).toEqual(expect.arrayContaining(['webapp:VE', 'webapp:AT']))
@@ -145,8 +189,9 @@ describe('ConfigureGameDialog', () => {
     const wrapper = mountDialog()
     await new Promise((r) => setTimeout(r, 0))
     expect(wrapper.find('[data-testid="selected-count"]').exists()).toBe(false)
-    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', true)
-    await wrapper.findComponent('[data-testid="family-eop:SP"]').vm.$emit('update:modelValue', true)
+    await openAllSets(wrapper)
+    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
+    await wrapper.findComponent('[data-testid="family-eop:SP"]').vm.$emit('update:modelValue', ['webapp:VE', 'eop:SP'])
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-testid="selected-count"]').text()).toContain('2')
     const chips = wrapper.find('[data-testid="selected-families"]')
