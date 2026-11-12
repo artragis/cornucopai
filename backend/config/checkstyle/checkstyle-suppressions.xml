@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+  Project-level suppressions for the Google Java Style ruleset
+  (backend/config/checkstyle/checkstyle.xml, vendored from Checkstyle 14.4.0).
+
+  Every entry MUST cite the research decision (R-xxx, specs/008-java-code-style/research.md)
+  that justifies it — constitution principle IV (decisions with trade-offs recorded).
+-->
+<suppressions>
+
+  <!-- R-066 (spec 008): the existing codebase has no Javadoc baseline; enforcing
+       missing-Javadoc now would produce hundreds of violations and block the
+       style feature. Javadoc coverage is a separate, later effort. -->
+  <suppress checks="MissingJavadocMethod"/>
+  <suppress checks="MissingJavadocType"/>
+
+  <!-- R-068 (spec 008): text-block formatting check disabled for the LLM prompt
+       builders. Their text blocks are prompt DATA sent verbatim to the LLM: the
+       Google text-block rule (opening/closing quotes alone on their line) would
+       change the prompts' leading whitespace. google-java-format (Spotless) already
+       leaves these blocks untouched, so there is no formatter/linter conflict. -->
+  <suppress checks="TextBlockGoogleStyleFormattingCheck" files="LlmPlayerAgent\.java"/>
+
+</suppressions>

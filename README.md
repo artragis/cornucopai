@@ -51,6 +51,23 @@ MAVEN_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
 # then attach your IDE debugger to localhost:5005
 ```
 
+### Java code style (Google Java Style — enforced)
+
+The backend follows the [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html),
+enforced at repo level by two Maven plugins bound to the `verify` phase (so they also run in CI):
+
+- **Checkstyle** (`maven-checkstyle-plugin` + Checkstyle 14.4.0) lints `src/main/java` and
+  `src/test/java` against the ruleset in `backend/config/checkstyle/checkstyle.xml`
+  (vendored `google_checks.xml`) with project suppressions in
+  `backend/config/checkstyle/checkstyle-suppressions.xml`.
+- **Spotless** (`spotless-maven-plugin` + google-java-format) formats the same sources.
+
+```sh
+cd backend
+./mvnw spotless:apply   # reformat all Java sources to Google Java Style (idempotent)
+./mvnw verify           # fails if any Checkstyle violation or unformatted file remains
+```
+
 ### Frontend
 
 ```sh

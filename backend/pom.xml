@@ -120,6 +120,61 @@
           </execution>
         </executions>
       </plugin>
+      <!-- R-064 (spec 008): Google Java Style lint, blocking in `verify` (FR-001).
+           Ruleset vendored at config/checkstyle/checkstyle.xml (Checkstyle 14.4.0),
+           suppressions at config/checkstyle/checkstyle-suppressions.xml (R-066). -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.6.0</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>14.4.0</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <configLocation>${project.basedir}/config/checkstyle/checkstyle.xml</configLocation>
+          <!-- the vendored config references ${config_loc}/checkstyle-suppressions.xml (R-064) -->
+          <propertyExpansion>config_loc=${project.basedir}/config/checkstyle</propertyExpansion>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>true</failsOnError>
+          <violationSeverity>warning</violationSeverity>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <id>checkstyle-check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- R-063/R-065 (spec 008): Google Java Format via Spotless. `spotless:apply`
+           reformats src/main/java + src/test/java (excludes target/); `spotless:check`
+           is bound to `verify` so unformatted code fails the build (and CI, FR-007). -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <java>
+            <googleJavaFormat/>
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <id>spotless-check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>
