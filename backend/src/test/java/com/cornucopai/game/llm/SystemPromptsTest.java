@@ -62,4 +62,19 @@ class SystemPromptsTest {
     // distinct personalities -> distinct prompts
     assertThat(SystemPrompts.forPersonality("A")).isNotEqualTo(SystemPrompts.forPersonality("B"));
   }
+
+  // T010 (spec 010, FR-008): free-text fields are markdown; structured data goes in a ```json
+  // code fence — never XML or any other markup.
+  @Test
+  void freeTextFieldsAreMarkdownAndStructuredDataIsJsonFencedNeverXml() {
+    String p = SystemPrompts.forPersonality("Tu es un analyste paranoïaque.");
+    assertThat(p).containsIgnoringCase("markdown");
+    assertThat(p).contains("```json");
+    // the deprecated archetype prompts share RULES_AND_CONTRACT, so they carry the rule too
+    for (Archetype a : EnumSet.allOf(Archetype.class)) {
+      assertThat(SystemPrompts.forArchetype(a))
+          .contains("```json")
+          .containsIgnoringCase("markdown");
+    }
+  }
 }

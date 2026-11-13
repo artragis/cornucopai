@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAtelier, type AtelierResponse } from '../services/atelierApi'
 import { useAtelierPolling } from '../composables/useAtelierPolling'
+import AgentText from '../components/AgentText.vue'
 
 // T026 (US4, spec 006 FR-014): dedicated detail page — scoreboard on top, all legs below.
 const route = useRoute()
@@ -154,7 +155,10 @@ function validationColor(validation: string): string {
                       v-if="leg.suitId"
                       class="text-caption"
                     >({{ leg.suitId }}{{ leg.cardValue ? ' ' + leg.cardValue : '' }})</span>
-                    <span class="text-body-2">{{ leg.scenario }}</span>
+                    <AgentText
+                      class="text-body-2"
+                      :text="leg.scenario"
+                    />
                     <v-chip
                       :color="validationColor(leg.validation)"
                       size="x-small"
@@ -182,7 +186,7 @@ function validationColor(validation: string): string {
                     </span>
                   </div>
                   <p class="text-body-2 mb-3">
-                    <strong>Explication :</strong> {{ leg.explanation }}
+                    <strong>Explication :</strong> <AgentText :text="leg.explanation" />
                   </p>
                   <template v-if="leg.entries && leg.entries.length">
                     <p class="text-caption font-weight-bold mb-2">
@@ -213,7 +217,7 @@ function validationColor(validation: string): string {
                         <span class="text-caption font-weight-bold">{{ entry.author }}</span>
                       </div>
                       <p class="text-body-2 mb-1 text-wrap">
-                        {{ entry.text }}
+                        <AgentText :text="entry.text" />
                       </p>
                       <!-- réponse du joueur de la carte, uniquement si connue -->
                       <div
@@ -221,7 +225,7 @@ function validationColor(validation: string): string {
                         class="reponse pa-2 mt-1 rounded"
                       >
                         <span class="text-caption font-weight-bold">Réponse du joueur :</span>
-                        <span class="text-body-2"> {{ entry.answer }}</span>
+                        <span class="text-body-2"> <AgentText :text="entry.answer" /></span>
                       </div>
                     </div>
                   </template>

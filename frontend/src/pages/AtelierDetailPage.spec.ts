@@ -104,4 +104,44 @@ describe('AtelierDetailPage', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('en cours')
   })
+
+  // T004 (US1, spec 010 FR-001/FR-002/FR-004): agent texts are markdown — rendered with styles,
+  // and an embedded ```json block becomes a styled language-json code block (no <em> on `_`).
+  it('renders markdown agent texts with a styled language-json code block', async () => {
+    const atelier = fakeAtelier()
+    atelier.legs[0].explanation =
+      'Analyse :\n```json\n{"card_id": "VE2", "threat_actor": "admin"}\n```\nfin de l\'explication'
+    atelier.legs[0].entries![0].text = '**Précision** importante'
+    vi.mocked(api.getAtelier).mockResolvedValue(atelier)
+    const wrapper = mount(AtelierDetailPage, { global: { plugins: [router, vuetify] } })
+    await flushPromises()
+    const titles = wrapper.findAll('.v-expansion-panel-title')
+    await titles[0].trigger('click')
+    await flushPromises()
+    const html = wrapper.html()
+    const code = wrapper.find('pre code.language-json')
+    expect(code.exists()).toBe(true)
+    expect(code.text()).toContain('card_id')
+    expect(html).toContain('<strong>Précision</strong>')
+    expect(html).not.toContain('<em>')
+    // surrounding prose is preserved
+    expect(wrapper.text()).toContain('Analyse :')
+    expect(wrapper.text()).toContain('fin de l\'explication')
+  })
+
+  // T004 (US1, spec 010 FR-007/FR-010): plain prose texts (legacy ateliers) render as simple
+  // readable paragraphs — no code block, no markdown artifacts.
+  it('renders plain prose leg texts as simple paragraphs (legacy behavior)', async () => {
+    vi.mocked(api.getAtelier).mockResolvedValue(fakeAtelier())
+    const wrapper = mount(AtelierDetailPage, { global: { plugins: [router, vuetify] } })
+    await flushPromises()
+    const titles = wrapper.findAll('.v-expansion-panel-title')
+    await titles[0].trigger('click')
+    await flushPromises()
+    expect(wrapper.find('pre code.language-json').exists()).toBe(false)
+    const agentTexts = wrapper.findAll('.agent-text')
+    expect(agentTexts.length).toBeGreaterThan(0)
+    expect(wrapper.text()).toContain('expl 1')
+    expect(wrapper.text()).toContain('une précision')
+  })
 })

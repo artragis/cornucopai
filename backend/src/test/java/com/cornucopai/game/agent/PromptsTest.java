@@ -75,4 +75,21 @@ class PromptsTest {
     assertThat(reactYes).contains("tour");
     assertThat(vote).contains("tour");
   }
+
+  // T011 (spec 010, FR-009): every user prompt reminds that free-text fields are markdown and
+  // structured data goes in a ```json code fence — never XML.
+  @Test
+  void everyUserPromptSaysMarkdownAndJsonFenceNeverXml() {
+    String play = LlmPlayerAgent.playPrompt(card, "<p>f</p>");
+    String reactYes = LlmPlayerAgent.reactPrompt(leg, cardPlayer, "<p>f</p>", true);
+    String reactNo = LlmPlayerAgent.reactPrompt(leg, cardPlayer, "<p>f</p>", false);
+    String answer = LlmPlayerAgent.answerPrompt("une question ?");
+    String vote = LlmPlayerAgent.votePrompt(leg, cardPlayer);
+    for (String p : new String[] {play, reactYes, reactNo, answer, vote}) {
+      assertThat(p)
+          .as("prompt must carry the markdown/```json rule: %s", p)
+          .containsIgnoringCase("markdown")
+          .contains("```json");
+    }
+  }
 }

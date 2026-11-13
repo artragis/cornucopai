@@ -1,6 +1,8 @@
 package com.cornucopai.game.card.model;
 
+import com.cornucopai.game.model.CardValueOrder;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.util.Objects;
 
 /**
  * A real Cornucopia card (spec 003, R-016). Persisted inside {@code atelier.json} as part of the
@@ -12,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
     getterVisibility = JsonAutoDetect.Visibility.NONE,
     setterVisibility = JsonAutoDetect.Visibility.NONE,
     isGetterVisibility = JsonAutoDetect.Visibility.NONE)
-public class Card {
+public class Card implements Comparable<Card> {
 
   private String id;
   private String value;
@@ -124,5 +126,13 @@ public class Card {
 
   public void setMisc(String misc) {
     this.misc = misc;
+  }
+
+  @Override
+  public int compareTo(Card o) {
+    if (!Objects.equals(o.suitId, suitId)) {
+      return -1;
+    }
+    return CardValueOrder.compare(value, o.value);
   }
 }

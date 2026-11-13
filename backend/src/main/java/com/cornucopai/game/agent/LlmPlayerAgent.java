@@ -220,7 +220,9 @@ public class LlmPlayerAgent implements PlayerAgent {
         """
         Débat avant vote — carte %s posée par %s.
         Utilise get_tour_info, get_project_facts et les outils MCP pour t'appuyer sur le projet.
-        %sDonne UN argument bref pour ou contre la validation de ce tour (texte libre, 1-2 phrases).
+        %sDonne UN argument bref pour ou contre la validation de ce tour.
+        Rappel : text est en markdown ; si tu y inclus des données structurées, mets-les dans un
+        bloc de code ```json.
         """
             .formatted(leg.cardName(), cardPlayer.name(), debateSection());
     try {
@@ -296,6 +298,8 @@ public class LlmPlayerAgent implements PlayerAgent {
 
     Propose un scénario d'attaque crédible pour cette carte appliqué à la feature, puis une explication.
     Réponds UNIQUEMENT en JSON : {"scenario": "...", "explanation": "..."}
+    Rappel : scenario et explanation sont en markdown ; si tu y inclus des données structurées,
+    mets-les dans un bloc de code ```json.
     """
         .formatted(
             DATA_LABEL,
@@ -327,6 +331,8 @@ public class LlmPlayerAgent implements PlayerAgent {
         FEATURE ANALYSEE — %s
         %s
 
+        Rappel : text est en markdown ; si tu y inclus des données structurées, mets-les dans un
+        bloc de code ```json.
         """
             .formatted(leg.cardName(), cardPlayer.name(), DATA_LABEL, featureHtml);
     if (questionsAllowed) {
@@ -352,6 +358,8 @@ public class LlmPlayerAgent implements PlayerAgent {
     affirmation avant de répondre.
     Réponds UNIQUEMENT en JSON : {"knows": true|false, "answer": "..."}
     knows=true uniquement si tu connais vraiment la réponse (avec answer non vide), sinon knows=false.
+    Rappel : answer est en markdown ; si tu y inclus des données structurées, mets-les dans un
+    bloc de code ```json.
     """
         .formatted(DATA_LABEL, question);
   }
@@ -381,6 +389,8 @@ public class LlmPlayerAgent implements PlayerAgent {
     "explanationCheck": "OK"|"INSUFFICIENT",
     "applicabilityCheck": "OK"|"NOT_APPLICABLE", "justification": "..."}.
     Aucun raisonnement, aucun texte autour du JSON.
+    Rappel : justification est en markdown ; si tu y inclus des données structurées, mets-les
+    dans un bloc de code ```json.
     """
         .formatted(leg.cardName(), cardPlayer.name());
   }

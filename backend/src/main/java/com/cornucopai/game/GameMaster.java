@@ -113,17 +113,17 @@ public class GameMaster {
       String majorSuit = null;
       List<Integer> legIndices = new ArrayList<>();
       List<LegPlay> plays = new ArrayList<>();
+      Map<String, PlayerAgent> byName =
+          agents.stream().collect(Collectors.toMap(PlayerAgent::name, Function.identity()));
       for (String current : tourPlayers) {
         turn++;
         legIndices.add(turn);
-        Card card = hands.get(current).poll();
+        Card card = byName.get(current).selectCard(hands.get(current), majorSuit);
         // couleur majeure: first non-WC card of the tour (FR-002/FR-003); WC led shifts to next
         // non-WC
         if (majorSuit == null && !WC_SUIT.equals(card.suitId())) {
           majorSuit = card.suitId();
         }
-        Map<String, PlayerAgent> byName =
-            agents.stream().collect(Collectors.toMap(PlayerAgent::name, Function.identity()));
         LegPlay play =
             runTurn(atelier, byName, participants, order, current, card, turn, tourIndex);
         plays.add(play);

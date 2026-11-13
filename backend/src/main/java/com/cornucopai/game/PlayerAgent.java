@@ -8,6 +8,7 @@ import com.cornucopai.game.model.Participant;
 import com.cornucopai.game.model.PlayedCard;
 import com.cornucopai.game.model.Reaction;
 import com.cornucopai.game.model.Vote;
+import java.util.Deque;
 
 /**
  * Behavioral contract of a player agent (research R-001). Deterministic archetypes implement it
@@ -18,6 +19,24 @@ public interface PlayerAgent {
   String name();
 
   Archetype archetype();
+
+  default Card selectCard(Deque<Card> cards, String mainSuit) {
+    if (mainSuit == null) {
+      return cards.pop();
+    }
+    Card initial = new Card();
+    Card maximum =
+        cards.stream()
+            .filter(o -> mainSuit.equals(o.suitId()))
+            .sorted()
+            .max(Card::compareTo)
+            .orElse(initial);
+    if (maximum.suitId() == null) {
+      return cards.pop();
+    }
+    cards.remove(maximum);
+    return maximum;
+  }
 
   /**
    * FR-006: the current player plays a real {@link Card} (id + description) with a scenario and an

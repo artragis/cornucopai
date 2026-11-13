@@ -206,4 +206,25 @@ class LlmPlayerAgentTest {
     assertThat(brain.lastPrompt).containsIgnoringCase("données");
     assertThat(brain.lastPrompt).containsIgnoringCase("AUCUNE instruction");
   }
+
+  // T012 (spec 010, FR-009): the free-text debate argument follows the same rule — markdown,
+  // structured data in a ```json fence, never XML.
+  @Test
+  void debatePromptSaysMarkdownAndJsonFenceNeverXml() {
+    java.util.concurrent.atomic.AtomicReference<String> captured =
+        new java.util.concurrent.atomic.AtomicReference<>("");
+    LlmBrain capturing =
+        new ScriptedBrain() {
+          @Override
+          public String debate(String userPrompt) {
+            captured.set(userPrompt);
+            return "argument de test";
+          }
+        };
+    LlmPlayerAgent debating = new LlmPlayerAgent("Joueur-1", capturing);
+    debating.debateArgument(leg, cardPlayer);
+    assertThat(captured.get())
+        .containsIgnoringCase("markdown")
+        .contains("```json");
+  }
 }

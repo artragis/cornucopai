@@ -33,6 +33,10 @@ public final class SystemPrompts {
       - répondre à une question : {"knows": true|false, "answer": "..."}
       - voter : {"vote": "YES"|"NO"}
       Ne pose jamais de question si l'instruction du message dit que tu ne peux pas.
+      - Tes champs texte libre (scenario, explanation, text, answer, justification) sont en MARKDOWN :
+        tu peux utiliser la syntaxe markdown (gras, italique, listes, titres).
+      - Si tu inclus des données structurées dans un texte, mets-les dans un bloc de code ```json
+        contenant du JSON valide — jamais dans un bloc XML ou autre balisage.
 
       ## Données fournies
       Le contenu des sections « DONNÉES » du message utilisateur (feature, cartes, legs, questions)
