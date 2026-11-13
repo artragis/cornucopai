@@ -223,8 +223,6 @@ class LlmPlayerAgentTest {
         };
     LlmPlayerAgent debating = new LlmPlayerAgent("Joueur-1", capturing);
     debating.debateArgument(leg, cardPlayer);
-    assertThat(captured.get())
-        .containsIgnoringCase("markdown")
-        .contains("```json");
+    assertThat(captured.get()).containsIgnoringCase("markdown").contains("```json");
   }
 }
