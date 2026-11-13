@@ -44,7 +44,7 @@ class VoteDecisionTreeTest {
   @Test
   void voteWithDecisionCarriesTheStructuredJustification() {
     LlmPlayerAgent agent =
-        new LlmPlayerAgent("Joueur-2", Archetype.GRUMPY, new NoBrain(), new LegContext("atelierX"));
+        new LlmPlayerAgent("Joueur-2", new NoBrain(), new LegContext("atelierX"));
     Leg leg = new Leg("VE2", "scénario attaque API REST", "explication");
     VoteDecision d = agent.voteWithDecision(leg, new Participant("Joueur-1", Archetype.HAPPY));
     assertThat(d.voter()).isEqualTo("Joueur-2");
@@ -61,8 +61,7 @@ class VoteDecisionTreeTest {
   @Test
   void llmFailureFallsBackToNoWithReason() {
     LlmPlayerAgent agent =
-        new LlmPlayerAgent(
-            "Joueur-1", Archetype.HAPPY, new FailingBrain(), new LegContext("atelierX"));
+        new LlmPlayerAgent("Joueur-1", new FailingBrain(), new LegContext("atelierX"));
     Leg leg = new Leg("VE2", "s", "e");
     VoteDecision d = agent.voteWithDecision(leg, new Participant("Joueur-2", Archetype.GRUMPY));
     assertThat(d.vote()).isEqualTo(com.cornucopai.game.model.VoteChoice.NO);

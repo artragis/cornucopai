@@ -5,7 +5,7 @@ the feature end-to-end: unit tests with fake LLM brains and a deterministic MCP
 mock (CI-safe, one family per game), toolbox inspection, shared-memory sharing,
 vote decision tree, debate, and MCP-down resilience. Implementation details live
 in `tasks.md`; contracts in `contracts/`; data model in `data-model.md`; decisions
-in `research.md` (R-045…R-062).
+in `research.md` (R-045…R-065).
 
 Prerequisites:
 

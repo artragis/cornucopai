@@ -2,7 +2,6 @@ package com.cornucopai.game.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.cornucopai.game.model.Archetype;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -21,12 +20,7 @@ class VoteCapTest {
     LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of());
     LangChain4jBrain brain =
         (LangChain4jBrain)
-            factory.create(
-                AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-                "Joueur-1",
-                Archetype.GRUMPY,
-                "atelierX",
-                List.of());
+            factory.create(TestAgents.snapshot("agent-1"), "Joueur-1", "atelierX", List.of());
     assertThat(brain.maxCompletionTokens()).isEqualTo(100);
     assertThat(brain.hasDedicatedVoteModel()).isTrue();
   }

@@ -74,6 +74,32 @@ class ModelContractTest {
     assertThat(p.archetype()).isEqualTo(Archetype.GRUMPY);
   }
 
+  // T021 (spec 009): Participant carries the driving agent id; legacy archetype tolerated on read
+  @Test
+  void participantExposesNameAndAgentId() throws Exception {
+    Participant p = new Participant("Joueur-1", "agent-42");
+    assertThat(p.name()).isEqualTo("Joueur-1");
+    assertThat(p.agentId()).isEqualTo("agent-42");
+    assertThat(p.archetype()).isNull();
+    // new writes never serialize archetype (NON_NULL)
+    String json = mapper.writeValueAsString(p);
+    assertThat(json).doesNotContain("archetype");
+    // legacy JSON with archetype still deserializes (FR-014)
+    Participant legacy =
+        mapper.readValue("{\"name\":\"Joueur-9\",\"archetype\":\"HAPPY\"}", Participant.class);
+    assertThat(legacy.archetype()).isEqualTo(Archetype.HAPPY);
+    assertThat(legacy.agentId()).isNull();
+  }
+
+  @Test
+  void atelierGainsAgentSnapshotsAndLegacyReadsEmpty() throws Exception {
+    Atelier a = new Atelier();
+    assertThat(a.agentSnapshots()).isEmpty();
+    Atelier legacy = mapper.readValue("{\"id\":\"x\",\"agentConfigs\":[]}", Atelier.class);
+    assertThat(legacy.agentSnapshots()).isEmpty();
+    assertThat(legacy.agentConfigs()).isEmpty();
+  }
+
   // ---- T004 (spec 006, Phase 2): Leg v3 additive fields + Atelier extended (R-047, R-048) ----
 
   private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();

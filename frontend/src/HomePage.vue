@@ -18,7 +18,8 @@ onMounted(async () => {
   }
 })
 
-async function onLaunch(payload: { playerCount: number; featureHtml: string; language: string; families: string[]; inheritFactsFrom?: string }) {
+// spec 009 (US2): the launch payload carries the selected agent ids (API v0.8.0)
+async function onLaunch(payload: { agentIds: string[]; featureHtml: string; language: string; families: string[]; inheritFactsFrom?: string }) {
   loading.value = true
   error.value = ''
   try {
@@ -53,6 +54,14 @@ async function onLaunch(payload: { playerCount: number; featureHtml: string; lan
               @click="dialogOpen = true"
             >
               Configurer une partie
+            </v-btn>
+            <!-- spec 009 (US1): navigation vers la page de gestion des agents -->
+            <v-btn
+              class="ml-2"
+              data-testid="agents-button"
+              @click="router.push('/agents')"
+            >
+              Gérer les agents
             </v-btn>
           </v-card-actions>
         </v-card>

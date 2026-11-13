@@ -21,7 +21,7 @@ justification is persisted with each vote, and optionally precede each vote with
 bounded multi-agent debate (**disabled by default** since the 2026-11-11 review,
 R-061; enable via `cornucopai.debate.enabled=true`). MCP failures are non-blocking
 (FR-004). Tests stay on one card family and use a deterministic MCP mock or the
-real local server. Decisions: `research.md` (R-045…R-062); entities:
+real local server. Decisions: `research.md` (R-045…R-065); entities:
 `data-model.md`; contracts: `contracts/`; validation: `quickstart.md`.
 
 ## Technical Context
@@ -55,7 +55,7 @@ real local server. Decisions: `research.md` (R-045…R-062); entities:
 | I. Specification-Driven Development | PASS | `spec.md` written, checklist all green, 7 clarifications/revisions integrated (session 2026-11-11, incl. post-review R-060/R-061/R-062) before this plan |
 | II. Test-First (non-negotiable) | PASS (enforced downstream) | Deterministic MCP mock for CI (R-055), fake `LlmBrain`, one family per game test; tests first in `/speckit-tasks` |
 | III. Modularity / SRP | PASS | New `game.mcp` package (config, transport/client/provider factory), `game.memory` package (SharedProjectMemory, ProjectFact, tools), vote decision tree in `game.llm` (VoteDecision DTO + prompt builder), debate orchestration in `game.debate`; `GameMaster` extended but `PlayerAgent` contract unchanged |
-| IV. Documentation & Transparency | PASS | `contracts/` (API v0.7.0, leg-schema v4.0.0, atelier schema), `data-model.md`, `quickstart.md`, this plan; decisions R-045…R-062 in `research.md`; structured logging of MCP calls, tool calls, debate turns, fallbacks |
+| IV. Documentation & Transparency | PASS | `contracts/` (API v0.7.0, leg-schema v4.0.0, atelier schema), `data-model.md`, `quickstart.md`, this plan; decisions R-045…R-065 in `research.md`; structured logging of MCP calls, tool calls, debate turns, fallbacks |
 | V. Simplicity (YAGNI) | PASS | Two new deps only (`langchain4j-mcp`, `langchain4j-agentic`), both pinned to 1.23.0; if agentic is overkill for the debate, plain loop fallback (research R-052); filesystem JSON, no DB; no MCP auth (per user) |
 | Tech standards (Quarkus/Java 25/LangChain4j; Vue 3/Vuetify) | PASS | Stack unchanged; new deps pinned to the already-used 1.23.0; frontend: one Vuetify `v-select` dropdown |
 | Repo layout (`backend/`, `frontend/` only) | PASS | New code under `backend/src/main/java/com/cornucopai/game/{mcp,memory,debate}`; frontend component under `frontend/src/components/` |

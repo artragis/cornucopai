@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/schemas/agent-schema.json",
+  "title": "Agent",
+  "description": "One configurable LLM agent, persisted as agents/{id}.json (spec 009, research R-001). The apiKeyVar field stores only the NAME of the environment variable holding the API key; the key value itself is never persisted (FR-006/FR-017). File name = {id}.json.",
+  "type": "object",
+  "required": ["id", "agentName", "openAiCompatibleUrl", "modelName", "personalityPrompt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Server-generated at creation, immutable on update (FR-003)"
+    },
+    "agentName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name; unique across all agents (FR-018)"
+    },
+    "openAiCompatibleUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://",
+      "description": "Absolute http/https URL of the OpenAI-compatible LLM endpoint (FR-019)"
+    },
+    "apiKeyVar": {
+      "type": "string",
+      "pattern": "^$|^[A-Za-z_][A-Za-z0-9_]*$",
+      "default": "",
+      "description": "Env var NAME holding the API key; empty = no key required (FR-006). Resolved server-side via System.getenv at game launch (FR-013)."
+    },
+    "modelName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "personalityPrompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free-text personality/instructions replacing the old archetype enum (FR-012)"
+    }
+  }
+}

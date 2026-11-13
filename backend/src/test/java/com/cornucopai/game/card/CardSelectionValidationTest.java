@@ -17,7 +17,9 @@ class CardSelectionValidationTest {
     given()
         .contentType(ContentType.JSON)
         .body(
-            "{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\", \"language\": \"fr\", "
+            "{\"agentIds\": "
+                + com.cornucopai.api.TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>x</p>\", \"language\": \"fr\", "
                 + "\"families\": []}")
         .when()
         .post("/api/ateliers")
@@ -30,7 +32,10 @@ class CardSelectionValidationTest {
   void missingFamiliesIs400() {
     given()
         .contentType(ContentType.JSON)
-        .body("{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\"}")
+        .body(
+            "{\"agentIds\": "
+                + com.cornucopai.api.TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>x</p>\"}")
         .when()
         .post("/api/ateliers")
         .then()
@@ -42,7 +47,10 @@ class CardSelectionValidationTest {
   void unknownFamilyIs400AndNamesIt() {
     given()
         .contentType(ContentType.JSON)
-        .body("{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\", \"families\": [\"eop:ZZ\"]}")
+        .body(
+            "{\"agentIds\": "
+                + com.cornucopai.api.TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>x</p>\", \"families\": [\"eop:ZZ\"]}")
         .when()
         .post("/api/ateliers")
         .then()
@@ -56,7 +64,9 @@ class CardSelectionValidationTest {
     given()
         .contentType(ContentType.JSON)
         .body(
-            "{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\", \"language\": \"fr\", "
+            "{\"agentIds\": "
+                + com.cornucopai.api.TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>x</p>\", \"language\": \"fr\", "
                 + "\"families\": [\"eop:SP\"]}")
         .when()
         .post("/api/ateliers")

@@ -2,7 +2,6 @@ package com.cornucopai.game.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.cornucopai.game.model.Archetype;
 import dev.langchain4j.data.message.UserMessage;
 import java.time.Duration;
 import java.util.List;
@@ -18,17 +17,13 @@ class MemoryIsolationTest {
   private final LlmDefaults defaults =
       new LlmDefaults("http://localhost:1235/v1", null, null, Duration.ofSeconds(5));
   private final LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of());
-  private final AgentLlmConfig cfg =
-      AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1");
+  private final AgentSnapshot snap = TestAgents.snapshot("agent-1");
 
   @Test
   void eachAgentGetsItsOwnMemoryScopedToTheAtelier() {
-    LangChain4jBrain a1 =
-        (LangChain4jBrain) factory.create(cfg, "Joueur-1", Archetype.GRUMPY, "atelierA");
-    LangChain4jBrain a2 =
-        (LangChain4jBrain) factory.create(cfg, "Joueur-1", Archetype.GRUMPY, "atelierB");
-    LangChain4jBrain b1 =
-        (LangChain4jBrain) factory.create(cfg, "Joueur-2", Archetype.HAPPY, "atelierA");
+    LangChain4jBrain a1 = (LangChain4jBrain) factory.create(snap, "Joueur-1", "atelierA");
+    LangChain4jBrain a2 = (LangChain4jBrain) factory.create(snap, "Joueur-1", "atelierB");
+    LangChain4jBrain b1 = (LangChain4jBrain) factory.create(snap, "Joueur-2", "atelierA");
     assertThat(a1.chatMemory()).isNotSameAs(a2.chatMemory());
     assertThat(a1.chatMemory()).isNotSameAs(b1.chatMemory());
     assertThat(a1.chatMemory().id()).isEqualTo("atelierA/Joueur-1");
@@ -38,8 +33,7 @@ class MemoryIsolationTest {
 
   @Test
   void memoryWindowIsCappedAt40Messages() {
-    LangChain4jBrain brain =
-        (LangChain4jBrain) factory.create(cfg, "Joueur-1", Archetype.GRUMPY, "atelierA");
+    LangChain4jBrain brain = (LangChain4jBrain) factory.create(snap, "Joueur-1", "atelierA");
     for (int i = 0; i < 50; i++) {
       brain.chatMemory().add(new UserMessage("message " + i));
     }

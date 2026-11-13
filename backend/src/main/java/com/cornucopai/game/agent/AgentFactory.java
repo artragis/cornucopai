@@ -1,7 +1,7 @@
 package com.cornucopai.game.agent;
 
 import com.cornucopai.game.PlayerAgent;
-import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.AgentSnapshot;
 import com.cornucopai.game.llm.LegContext;
 import com.cornucopai.game.llm.LlmBrain;
 import com.cornucopai.game.llm.LlmBrainFactory;
@@ -49,14 +49,14 @@ public class AgentFactory {
   }
 
   /**
-   * One {@link LlmPlayerAgent} per participant, index-aligned with {@code configs}; {@code
-   * atelierId} scopes the per-agent memory (R-025). Spec 007 US1 (R-046): one MCP tool provider per
-   * atelier, shared by all its agents.
+   * One {@link LlmPlayerAgent} per participant, index-aligned with {@code snapshots} (spec 009,
+   * FR-011/FR-017); {@code atelierId} scopes the per-agent memory (R-025). Spec 007 US1 (R-046):
+   * one MCP tool provider per atelier, shared by all its agents.
    */
   public List<PlayerAgent> createAgents(
-      List<Participant> players, List<AgentLlmConfig> configs, String atelierId) {
-    if (players.size() != configs.size()) {
-      throw new IllegalArgumentException("players and configs must be index-aligned");
+      List<Participant> players, List<AgentSnapshot> snapshots, String atelierId) {
+    if (players.size() != snapshots.size()) {
+      throw new IllegalArgumentException("players and snapshots must be index-aligned");
     }
     // spec 005 US-2 (R-038/R-039): one LegContext + one TourInfoTool per game, shared by all its
     // agents
@@ -85,9 +85,8 @@ public class AgentFactory {
               });
       List<Object> gameTools = List.of(tourInfoTool, factsTool);
       LlmBrain brain =
-          llmBrainFactory.create(
-              configs.get(i), p.name(), p.archetype(), atelierId, gameTools, mcpProvider);
-      agents.add(new LlmPlayerAgent(p.name(), p.archetype(), brain, legContext, sharedMemory));
+          llmBrainFactory.create(snapshots.get(i), p.name(), atelierId, gameTools, mcpProvider);
+      agents.add(new LlmPlayerAgent(p.name(), brain, legContext, sharedMemory));
     }
     return agents;
   }

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.cornucopai.game.card.CardInfoService;
 import com.cornucopai.game.card.CardInfoTool;
-import com.cornucopai.game.model.Archetype;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -26,12 +25,7 @@ class ToolboxWiringTest {
         new LlmDefaults("http://localhost:1235/v1", null, null, Duration.ofSeconds(5));
     LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of(tool));
     LlmBrain brain =
-        factory.create(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            "Joueur-1",
-            Archetype.GRUMPY,
-            "atelierX",
-            List.of());
+        factory.create(TestAgents.snapshot("agent-1"), "Joueur-1", "atelierX", List.of());
     assertThat(brain).isInstanceOf(LangChain4jBrain.class);
     assertThat(((LangChain4jBrain) brain).tools()).contains(tool);
   }
@@ -45,12 +39,7 @@ class ToolboxWiringTest {
         new LlmDefaults("http://localhost:1235/v1", null, null, Duration.ofSeconds(5));
     LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of(cardTool));
     LlmBrain brain =
-        factory.create(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            "Joueur-1",
-            Archetype.GRUMPY,
-            "atelierX",
-            List.of(tourTool));
+        factory.create(TestAgents.snapshot("agent-1"), "Joueur-1", "atelierX", List.of(tourTool));
     assertThat(((LangChain4jBrain) brain).tools()).contains(cardTool, tourTool);
   }
 }

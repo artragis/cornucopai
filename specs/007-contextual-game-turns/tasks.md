@@ -7,7 +7,7 @@ description: "Task list for feature 007-contextual-game-turns — agents conscie
 
 **Input**: Design documents from `/specs/007-contextual-game-turns/`
 
-**Prerequisites**: plan.md (required), spec.md (required for user stories, incl. Clarifications session 2026-11-11), research.md (R-045…R-062), data-model.md, contracts/ (ateliers-api.yaml v0.7.0, leg-schema.json v4.0.0, atelier-schema.json v0.7.0), quickstart.md
+**Prerequisites**: plan.md (required), spec.md (required for user stories, incl. Clarifications session 2026-11-11), research.md (R-045…R-065), data-model.md, contracts/ (ateliers-api.yaml v0.7.0, leg-schema.json v4.0.0, atelier-schema.json v0.7.0), quickstart.md
 
 **Tests**: INCLUDED and MANDATORY — constitution principle II (Test-First, non-negotiable): every test task is written and MUST FAIL before its implementation task runs (Red-Green-Refactor). Backend CI stays LLM-free and MCP-free (fake brain `cornucopai.llm.brain=fake`, mock `McpTransport` via `cornucopai.mcp.ide.mock=true` in test profile — R-055, one single card family per game test — spec 004 FR-014). Frontend tests use Vitest.
 
@@ -205,6 +205,9 @@ description: "Task list for feature 007-contextual-game-turns — agents conscie
 - [X] T062 [US2] Persist project facts at every turn end — new `PlayerAgent.sharedMemory()` default method (null), overridden by `LlmPlayerAgent`; `GameMaster.runTurn` ends with `persistFacts(...)` (`atelier.setProjectFacts(...)` + `store.saveAtelier`); test `SharedMemoryGameTest.factsDiscoveredDuringATurnArePersistedInTheAtelierJson` (FR-016, R-062)
 - [X] T063 [US2] Make inheritance reach the live memory — `AtelierService.createAndRun` seeds the shared memory via `memory.setAll(atelier.projectFacts())` after creation (previously facts were only copied into the JSON) (FR-016, FR-007, R-062)
 - [X] T064 [P] [US1] MCP client hardening (observed WARN reconnection spam) — `autoHealthCheck(false)` by default (`cornucopai.mcp.ide.auto-health-check`, R-059), `cornucopai.mcp.ide.protocol-version=2025-11-25` pinned to skip auto-detection, bound as `Optional<String>` (SmallRye turns `""` into null); `McpIdeConfigTest.autoHealthCheckDefaultsToFalseAndProtocolVersionToAuto` (R-059)
+- [X] T065 [P] [US1] Real-run fix: array `content` in chat-completion responses — new `SanitizingHttpClientBuilder` in `backend/src/main/java/com/cornucopai/game/llm/`, wired via `.httpClientBuilder(...)` in `LangChain4jBrain.modelBuilder()`; rewrites `choices[].message.content` arrays into joined text for `/chat/completions` only; `SanitizingHttpClientBuilderTest` (R-063)
+- [X] T066 [US3] Real-run fix: tools on the vote proxy + lenient hallucinated-tool strategy — single `baseAiServiceBuilder()` in `LangChain4jBrain` used by BOTH `ai()` and `voteAi()` (full toolbox + MCP provider), `.maxToolCallingRoundTrips(100)`, `.hallucinatedToolNameStrategy(LENIENT_HALLUCINATED_TOOL)` (explanatory tool result instead of THROW_EXCEPTION); `HallucinatedToolStrategyTest` (R-064)
+- [X] T067 [US3] Real-run fix: `@CreatedAware` on `PlayerAiService` so `AiServices.builder(...).build()` works inside the Quarkus runtime (without it: « Quarkus was not able to determine class ... as an AiService at build time » at `voteAi`); regression test `PlayerAiServiceQuarkusBuildTest` (@QuarkusTest, real `build()` with a `DisabledChatModel`) (R-065)
 
 **Checkpoint**: review deltas are now traceable to tasks; spec/plan/tasks consistent (see `/speckit-analyze` follow-up).
 

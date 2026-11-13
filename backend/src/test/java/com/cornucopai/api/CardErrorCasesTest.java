@@ -42,7 +42,10 @@ class CardErrorCasesTest {
   void launchIsRefused400WhenRepoNotConfigured() {
     given()
         .contentType(ContentType.JSON)
-        .body("{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\", \"families\": [\"webapp:VE\"]}")
+        .body(
+            "{\"agentIds\": "
+                + TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>x</p>\", \"families\": [\"webapp:VE\"]}")
         .when()
         .post("/api/ateliers")
         .then()

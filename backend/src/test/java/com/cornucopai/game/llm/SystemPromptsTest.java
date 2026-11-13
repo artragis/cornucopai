@@ -47,4 +47,19 @@ class SystemPromptsTest {
     assertThat(SystemPrompts.forArchetype(Archetype.GREEDY)).containsIgnoringCase("longues");
     assertThat(SystemPrompts.forArchetype(Archetype.PROF)).containsIgnoringCase("pédagogue");
   }
+
+  // T035 (spec 009, FR-012): the game-flow prompt is base rules + the free-text personality
+  @Test
+  void forPersonalityIsBaseRulesPlusFreeTextPrompt() {
+    String p = SystemPrompts.forPersonality("Tu es un analyste paranoïaque.");
+    assertThat(p)
+        .contains("Cornucopia")
+        .contains("PRECISION")
+        .contains("YES")
+        .containsIgnoringCase("JSON");
+    assertThat(p).contains("Tu es un analyste paranoïaque.");
+    assertThat(p).doesNotContain("GRUMPY").doesNotContain("grincheux");
+    // distinct personalities -> distinct prompts
+    assertThat(SystemPrompts.forPersonality("A")).isNotEqualTo(SystemPrompts.forPersonality("B"));
+  }
 }

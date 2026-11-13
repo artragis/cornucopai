@@ -5,9 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.cornucopai.game.agent.AgentFactory;
 import com.cornucopai.game.card.CardCatalogService;
 import com.cornucopai.game.card.CardDeckService;
-import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.AgentSnapshot;
 import com.cornucopai.game.llm.LlmBrainFactory;
 import com.cornucopai.game.llm.LlmDefaults;
+import com.cornucopai.game.llm.TestAgents;
 import com.cornucopai.game.mcp.McpIdeConfig;
 import com.cornucopai.game.mcp.McpToolProviderFactory;
 import com.cornucopai.game.mcp.MockMcpClient;
@@ -51,10 +52,8 @@ class McpResilienceGameTest {
         List.of(
             new Participant("Joueur-1", Archetype.GRUMPY),
             new Participant("Joueur-2", Archetype.HAPPY));
-    List<AgentLlmConfig> configs =
-        List.of(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"));
+    List<AgentSnapshot> snapshots =
+        List.of(TestAgents.snapshot("agent-1"), TestAgents.snapshot("agent-2"));
     LlmBrainFactory brainFactory =
         new LlmBrainFactory(
             "fake",
@@ -66,12 +65,12 @@ class McpResilienceGameTest {
     AgentFactory agentFactory = new AgentFactory(brainFactory, provider);
 
     String id = store.createAtelierDir(store.newAtelierId());
-    List<PlayerAgent> agents = agentFactory.createAgents(players, configs, id);
+    List<PlayerAgent> agents = agentFactory.createAgents(players, snapshots, id);
 
     Atelier atelier =
         new Atelier(
             id, Instant.now(), "<p>feature test</p>", 2, players, List.of(), deckResult.deck());
-    atelier.setAgentConfigs(configs);
+    atelier.setAgentSnapshots(snapshots);
     Atelier result = new GameMaster(store, random).runGame(atelier, agents);
 
     assertThat(result.finishedAt()).isNotNull();

@@ -3,11 +3,11 @@ package com.cornucopai.game.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.cornucopai.game.PlayerAgent;
-import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.AgentSnapshot;
 import com.cornucopai.game.llm.FakeLlmBrain;
 import com.cornucopai.game.llm.LlmBrainFactory;
 import com.cornucopai.game.llm.LlmDefaults;
-import com.cornucopai.game.model.Archetype;
+import com.cornucopai.game.llm.TestAgents;
 import com.cornucopai.game.model.Participant;
 import java.time.Duration;
 import java.util.List;
@@ -27,22 +27,18 @@ class AgentFactoryTest {
   private final AgentFactory factory = new AgentFactory(brainFactory);
 
   @Test
-  void createAgentsBuildsLlmPlayerAgentsWithMatchingNamesAndArchetypes() {
+  void createAgentsBuildsLlmPlayerAgentsWithMatchingNamesAndAgentIds() {
     List<Participant> players =
-        List.of(
-            new Participant("Joueur-1", Archetype.GRUMPY),
-            new Participant("Joueur-2", Archetype.HAPPY));
-    List<AgentLlmConfig> configs =
-        List.of(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"));
-    List<PlayerAgent> agents = factory.createAgents(players, configs, "atelierTest");
+        List.of(new Participant("Joueur-1", "agent-1"), new Participant("Joueur-2", "agent-2"));
+    List<AgentSnapshot> snapshots =
+        List.of(TestAgents.snapshot("agent-1"), TestAgents.snapshot("agent-2"));
+    List<PlayerAgent> agents = factory.createAgents(players, snapshots, "atelierTest");
     assertThat(agents).hasSize(2);
     assertThat(agents).allSatisfy(a -> assertThat(a).isInstanceOf(LlmPlayerAgent.class));
     assertThat(agents).extracting(PlayerAgent::name).containsExactly("Joueur-1", "Joueur-2");
     assertThat(agents)
-        .extracting(PlayerAgent::archetype)
-        .containsExactly(Archetype.GRUMPY, Archetype.HAPPY);
+        .extracting(a -> players.get(agents.indexOf(a)).agentId())
+        .containsExactly("agent-1", "agent-2");
     // each agent got its own brain instance
     assertThat(((LlmPlayerAgent) agents.get(0)).brain())
         .isNotSameAs(((LlmPlayerAgent) agents.get(1)).brain());

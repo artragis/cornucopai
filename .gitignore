@@ -22,3 +22,7 @@ frontend/dist/
 .idea/
 *.tmp
 *.swp
+
+# Runtime agent data (spec 009, R-001)
+agents/
+backend/agents/

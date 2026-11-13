@@ -57,7 +57,9 @@ class AtelierResourceTest {
             // spec 004 (FR-014): ONE single family per test game -> bounded turns (webapp:VE = 2
             // cards -> 2 legs)
             .body(
-                "{\"playerCount\": 4, \"featureHtml\": \"<p>Feature login OAuth2</p>\", "
+                "{\"agentIds\": "
+                    + TestAgentSupport.agentIdsJson(4)
+                    + ", \"featureHtml\": \"<p>Feature login OAuth2</p>\", "
                     + "\"language\": \"fr\", \"families\": [\"webapp:VE\"]}")
             .when()
             .post("/api/ateliers")
@@ -68,7 +70,7 @@ class AtelierResourceTest {
             .body("featureHtml", is("<p>Feature login OAuth2</p>"))
             .body("players.size()", is(4))
             .body("players.name", contains("Joueur-1", "Joueur-2", "Joueur-3", "Joueur-4"))
-            .body("players.archetype", contains("GRUMPY", "HAPPY", "GREEDY", "PROF"))
+            .body("players.agentId", everyItem(notNullValue()))
             .body("turnOrder.size()", is(4))
             // spec 003 + spec 004 (FR-014): real cards from the single family webapp:VE (2) -> 2
             // cards -> 2 legs
@@ -159,7 +161,9 @@ class AtelierResourceTest {
         given()
             .contentType(ContentType.JSON)
             .body(
-                "{\"playerCount\": 2, \"featureHtml\": \"<p>f1</p>\", \"language\": \"fr\", "
+                "{\"agentIds\": "
+                    + TestAgentSupport.agentIdsJson(2)
+                    + ", \"featureHtml\": \"<p>f1</p>\", \"language\": \"fr\", "
                     + "\"families\": [\"webapp:VE\"]}")
             .when()
             .post("/api/ateliers")
@@ -190,7 +194,9 @@ class AtelierResourceTest {
     given()
         .contentType(ContentType.JSON)
         .body(
-            "{\"playerCount\": 2, \"featureHtml\": \"<p>f2</p>\", \"language\": \"fr\", "
+            "{\"agentIds\": "
+                + TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>f2</p>\", \"language\": \"fr\", "
                 + "\"families\": [\"webapp:VE\"], \"inheritFactsFrom\": \""
                 + firstId
                 + "\"}")
@@ -207,7 +213,9 @@ class AtelierResourceTest {
     given()
         .contentType(ContentType.JSON)
         .body(
-            "{\"playerCount\": 2, \"featureHtml\": \"<p>x</p>\", \"families\": [\"webapp:VE\"], "
+            "{\"agentIds\": "
+                + TestAgentSupport.agentIdsJson(2)
+                + ", \"featureHtml\": \"<p>x</p>\", \"families\": [\"webapp:VE\"], "
                 + "\"inheritFactsFrom\": \"atelier-does-not-exist\"}")
         .when()
         .post("/api/ateliers")
@@ -219,7 +227,10 @@ class AtelierResourceTest {
   void postWithLessThanTwoPlayersIs400() {
     given()
         .contentType(ContentType.JSON)
-        .body("{\"playerCount\": 1, \"featureHtml\": \"<p>x</p>\", \"families\": [\"eop:SP\"]}")
+        .body(
+            "{\"agentIds\": "
+                + TestAgentSupport.agentIdsJson(1)
+                + ", \"featureHtml\": \"<p>x</p>\", \"families\": [\"eop:SP\"]}")
         .when()
         .post("/api/ateliers")
         .then()
@@ -231,7 +242,10 @@ class AtelierResourceTest {
   void postWithEmptyFeatureIs400() {
     given()
         .contentType(ContentType.JSON)
-        .body("{\"playerCount\": 4, \"featureHtml\": \"\", \"families\": [\"eop:SP\"]}")
+        .body(
+            "{\"agentIds\": "
+                + TestAgentSupport.agentIdsJson(4)
+                + ", \"featureHtml\": \"\", \"families\": [\"eop:SP\"]}")
         .when()
         .post("/api/ateliers")
         .then()
@@ -245,7 +259,9 @@ class AtelierResourceTest {
         given()
             .contentType(ContentType.JSON)
             .body(
-                "{\"playerCount\": 2, \"featureHtml\": \"<p>Feature X</p>\", "
+                "{\"agentIds\": "
+                    + TestAgentSupport.agentIdsJson(2)
+                    + ", \"featureHtml\": \"<p>Feature X</p>\", "
                     + "\"families\": [\"eop:SP\"]}")
             .when()
             .post("/api/ateliers")

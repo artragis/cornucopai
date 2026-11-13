@@ -1,7 +1,7 @@
 # Data Model: Agents conscients du projet — MCP IDE, mémoire partagée, vote par arbre de décision
 
 Derived from `spec.md` (Key Entities + FR-001…FR-015 + clarifications 2026-11-11)
-and `research.md` (R-045…R-062). Persistence stays filesystem JSON; all changes are
+and `research.md` (R-045…R-065). Persistence stays filesystem JSON; all changes are
 additive with tolerant legacy reads (same pattern as spec 006 v3).
 
 ## Entities

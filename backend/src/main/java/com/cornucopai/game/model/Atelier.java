@@ -2,7 +2,9 @@ package com.cornucopai.game.model;
 
 import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.AgentSnapshot;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,8 +20,12 @@ import java.util.Map;
  * selectedFamilies} ({@code setId:familyId}) and the per-set {@code sets} resolved language.
  *
  * <p>Spec 004: {@code agentConfigs} persists the resolved per-player LLM provider configs (FR-012),
- * index-aligned with {@code players}.
+ * index-aligned with {@code players} — legacy, still readable, no longer written.
+ *
+ * <p>Spec 009: {@code agentSnapshots} persists a full copy of each player's agent config at launch
+ * (FR-017), index-aligned with {@code players}; {@code players[]} gains {@code agentId}.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonAutoDetect(
     fieldVisibility = JsonAutoDetect.Visibility.ANY,
     getterVisibility = JsonAutoDetect.Visibility.NONE,
@@ -38,7 +44,16 @@ public class Atelier {
   private String language = "fr";
   private List<String> selectedFamilies = new ArrayList<>();
   private List<SetResolution> sets = new ArrayList<>();
-  private List<AgentLlmConfig> agentConfigs = new ArrayList<>();
+
+  /**
+   * Spec 004 field, readable from legacy ateliers, no longer written.
+   *
+   * @deprecated spec 009 (FR-014): use {@link #agentSnapshots()}.
+   */
+  @Deprecated private List<AgentLlmConfig> agentConfigs = new ArrayList<>();
+
+  // Spec 009 (FR-017): snapshot of each player's agent at launch, index-aligned with players
+  private List<AgentSnapshot> agentSnapshots = new ArrayList<>();
   // Spec 006 (R-048): tours, per-player scores, winner — empty on legacy ateliers
   private List<Tour> tours = new ArrayList<>();
   private Map<String, Integer> scores = new LinkedHashMap<>();
@@ -110,8 +125,22 @@ public class Atelier {
     return sets;
   }
 
+  /**
+   * Legacy getter (spec 004).
+   *
+   * @deprecated spec 009 (FR-014), see {@link #agentSnapshots()}.
+   */
+  @Deprecated
   public List<AgentLlmConfig> agentConfigs() {
     return agentConfigs;
+  }
+
+  public List<AgentSnapshot> agentSnapshots() {
+    return agentSnapshots;
+  }
+
+  public void setAgentSnapshots(List<AgentSnapshot> agentSnapshots) {
+    this.agentSnapshots = agentSnapshots == null ? new ArrayList<>() : agentSnapshots;
   }
 
   public void setId(String id) {
@@ -158,6 +187,12 @@ public class Atelier {
     this.sets = sets;
   }
 
+  /**
+   * Legacy setter (spec 004), kept so old tests/fixtures can populate it.
+   *
+   * @deprecated spec 009 (FR-014).
+   */
+  @Deprecated
   public void setAgentConfigs(List<AgentLlmConfig> agentConfigs) {
     this.agentConfigs = agentConfigs;
   }

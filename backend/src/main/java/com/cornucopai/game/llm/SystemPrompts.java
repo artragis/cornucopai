@@ -68,7 +68,25 @@ public final class SystemPrompts {
       YES aux autres.
       """;
 
-  /** The system prompt of one archetype: rules + output contract + personality. */
+  /**
+   * Spec 009 (FR-012): the system prompt of an agent = game rules + output contract + the agent's
+   * free-text {@code personalityPrompt} (which replaces the old archetype enum).
+   */
+  public static String forPersonality(String personalityPrompt) {
+    return RULES_AND_CONTRACT
+        + "\n## Ta personnalité\n"
+        + (personalityPrompt == null ? "" : personalityPrompt.strip())
+        + "\n";
+  }
+
+  /**
+   * The system prompt of one archetype: rules + output contract + personality.
+   *
+   * @deprecated spec 009 (FR-011/FR-012): archetypes are no longer part of the game flow — the
+   *     personality comes from {@link #forPersonality(String)}. Kept for the deterministic agents'
+   *     unit tests only.
+   */
+  @Deprecated
   public static String forArchetype(Archetype archetype) {
     String personality =
         switch (archetype) {

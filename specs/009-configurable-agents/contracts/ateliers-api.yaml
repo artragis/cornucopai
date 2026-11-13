@@ -1,0 +1,225 @@
+# API contract for ateliers — UPDATED by feature 009-configurable-agents (v0.8.0)
+# (supersedes specs/007-contextual-game-turns/contracts/ateliers-api.yaml v0.7.0)
+#
+# Changes (spec 009, FR-007/FR-009/FR-010/FR-016/FR-017/FR-020, research R-004/R-005):
+#   - POST /api/ateliers request body: `playerCount` and the spec-004 `agents` array are
+#     REMOVED, replaced by a REQUIRED `agentIds: string[]` (min 2, duplicates allowed —
+#     two participants may share the same agent, FR-009). Each entry binds one
+#     participant to the agent with that id (from /api/agents). Unknown id -> 400.
+#   - The participant order (and first leader) is drawn RANDOMLY at launch (FR-020);
+#     participant names are "Joueur-N" after the shuffle (FR-016).
+#   - The atelier gains `agentSnapshots[]`: a full copy of each selected agent's config
+#     at launch, index-aligned with `players[]` (FR-017). The API key VALUE is never
+#     copied — only the apiKeyVar name. If apiKeyVar is set but the env var is missing
+#     at launch -> 400 naming the missing variable (FR-013).
+#   - Atelier.players[] gains `agentId`; `archetype` becomes legacy-only (readable from
+#     pre-009 ateliers, FR-014; never written anymore). Legacy `agentConfigs[]` (spec 004)
+#     stays readable, deprecated, no longer written.
+#   - GET /api/ateliers, GET /api/ateliers/{id}, GET /api/card-catalog: UNCHANGED from
+#     v0.7.0 (summarized below for completeness).
+# The game still runs synchronously on POST.
+openapi: 3.0.3
+info:
+  title: CornucopAI Ateliers API
+  version: 0.8.0
+  description: >
+    Create and run a Cornucopia threat-modeling workshop played by configurable LLM
+    agents (spec 009). Participants are chosen by selecting agent ids from
+    /api/agents; each participant is driven exclusively by the LLM configured on its
+    agent (URL + model + apiKeyVar + personalityPrompt). ACP providers and the
+    archetype enum are gone from the launch path (FR-011).
+paths:
+  /api/ateliers:
+    post:
+      summary: Create an atelier whose participants are the selected agents (spec 009 FR-007..FR-012)
+      operationId: createAtelier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAtelierRequest'
+            example:
+              agentIds: ["3f6d2c9a-…", "3f6d2c9a-…", "81b0e4f1-…"]
+              featureHtml: "<p>Analyse de la feature <b>login OAuth2</b></p>"
+              language: fr
+              families: ["webapp:VE"]
+      responses:
+        '201':
+          description: Atelier created and game fully played; players + agentSnapshots persisted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atelier'
+        '400':
+          description: >
+            Invalid request — agentIds missing or < 2 (FR-010), unknown agent id,
+            empty featureHtml, empty families, unknown setId:familyId, Cornucopia repo
+            not configured (spec 003), or apiKeyVar set but env var missing at launch
+            (FR-013, message names the variable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List all ateliers (id, createdAt, playerCount) — unchanged from v0.7.0
+      operationId: listAteliers
+      responses:
+        '200':
+          description: List of atelier summaries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AtelierSummary'
+  /api/ateliers/{id}:
+    get:
+      summary: Full atelier detail including players (with agentId), agentSnapshots, legs, scores — v0.8.0 adds agentId/agentSnapshots
+      operationId: getAtelier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Atelier detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atelier'
+        '404':
+          description: Unknown atelier id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    CreateAtelierRequest:
+      type: object
+      required: [agentIds, featureHtml, families]
+      properties:
+        agentIds:
+          type: array
+          minItems: 2
+          items: { type: string, format: uuid }
+          description: >
+            One entry per participant, each = the id of a /api/agents agent (FR-007).
+            Duplicates allowed: two participants may share the same agent (FR-009).
+            Participant count = agentIds.length; order/first leader drawn randomly at
+            launch (FR-020); names are Joueur-N after the shuffle (FR-016).
+          example: ["3f6d2c9a-1111-4aaa-8bbb-000000000001", "3f6d2c9a-1111-4aaa-8bbb-000000000001"]
+        featureHtml:
+          type: string
+          minLength: 1
+          example: "<p>Analyse de la feature <b>login OAuth2</b></p>"
+        language:
+          type: string
+          default: fr
+          example: fr
+        families:
+          type: array
+          minItems: 1
+          items: { type: string }
+          description: Selected families as "setId:familyId" pairs (spec 003, unchanged)
+          example: ["webapp:VE"]
+        inheritFactsFrom:
+          type: string
+          description: Optional source atelier id whose projectFacts are inherited (spec 007, unchanged)
+    Participant:
+      type: object
+      required: [name, agentId]
+      properties:
+        name:
+          type: string
+          description: "Joueur-N (N = position after the random launch shuffle, FR-016/FR-020)"
+          example: Joueur-1
+        agentId:
+          type: string
+          format: uuid
+          description: Agent driving this participant (spec 009)
+        archetype:
+          type: string
+          enum: [GRUMPY, HAPPY, GREEDY, PROF]
+          deprecated: true
+          description: Legacy field, readable from pre-009 ateliers only (FR-014); never written anymore
+    AgentSnapshot:
+      type: object
+      description: Full copy of the agent config at launch, index-aligned with players[] (FR-017). Never contains the API key value.
+      required: [id, agentName, openAiCompatibleUrl, modelName, personalityPrompt]
+      properties:
+        id: { type: string, format: uuid }
+        agentName: { type: string }
+        openAiCompatibleUrl: { type: string, format: uri }
+        apiKeyVar:
+          type: string
+          description: Env var NAME only (empty = no key); the key value is resolved at runtime via getenv and never persisted (FR-006)
+        modelName: { type: string }
+        personalityPrompt: { type: string }
+    Atelier:
+      type: object
+      description: Atelier detail — fields from v0.7.0 unchanged except players[] (gains agentId) and the new agentSnapshots[]; legacy agentConfigs[] deprecated.
+      required: [id, createdAt, featureHtml, players, turnOrder, language, selectedFamilies, deck, agentSnapshots]
+      properties:
+        id: { type: string, example: atelier2026-11-12-091500 }
+        createdAt: { type: string, format: date-time }
+        featureHtml: { type: string }
+        playerCount:
+          type: integer
+          deprecated: true
+          description: Legacy (pre-009); equals players.length
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        agentSnapshots:
+          type: array
+          description: Snapshot of each player's agent at launch, index-aligned with players[] (FR-017)
+          items:
+            $ref: '#/components/schemas/AgentSnapshot'
+        agentConfigs:
+          type: array
+          deprecated: true
+          description: Spec-004 per-player LLM configs; readable for legacy ateliers, no longer written
+        turnOrder:
+          type: array
+          items: { type: string }
+          description: Player names in play order — first entry is the first leader (random draw, FR-020)
+        language: { type: string }
+        selectedFamilies:
+          type: array
+          items: { type: string }
+        deck:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        # legs, tours, scores, projectFacts etc. unchanged from v0.7.0
+    AtelierSummary:
+      type: object
+      required: [id, createdAt, playerCount]
+      properties:
+        id: { type: string }
+        createdAt: { type: string, format: date-time }
+        playerCount: { type: integer }
+        hasProjectFacts: { type: boolean }
+    Card:
+      type: object
+      description: Unchanged from v0.7.0
+      required: [id, value, setId, suitId, suitName, language, description]
+      properties:
+        id: { type: string }
+        value: { type: string }
+        setId: { type: string }
+        suitId: { type: string }
+        suitName: { type: string }
+        language: { type: string }
+        description: { type: string }
+        url: { type: string, nullable: true }
+        misc: { type: string, nullable: true }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }

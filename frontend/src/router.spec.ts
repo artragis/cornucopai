@@ -13,4 +13,10 @@ describe('router', () => {
     expect(router.currentRoute.value.path).toBe('/ateliers/atelier20261110-111343')
     expect(router.currentRoute.value.params.id).toBe('atelier20261110-111343')
   })
+
+  // T012 (spec 009, US1): the agents management page lives at /agents
+  it('has an agents route at /agents', async () => {
+    await router.push('/agents')
+    expect(router.currentRoute.value.path).toBe('/agents')
+  })
 })

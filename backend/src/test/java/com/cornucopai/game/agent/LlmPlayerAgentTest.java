@@ -77,7 +77,7 @@ class LlmPlayerAgentTest {
   }
 
   private final ScriptedBrain brain = new ScriptedBrain();
-  private final PlayerAgent agent = new LlmPlayerAgent("Joueur-1", Archetype.GRUMPY, brain);
+  private final PlayerAgent agent = new LlmPlayerAgent("Joueur-1", brain);
   private final Card card =
       new Card(
           "VE2",

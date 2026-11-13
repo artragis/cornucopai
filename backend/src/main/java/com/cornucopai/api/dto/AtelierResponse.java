@@ -2,6 +2,7 @@ package com.cornucopai.api.dto;
 
 import com.cornucopai.game.card.model.Card;
 import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.AgentSnapshot;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Leg;
 import com.cornucopai.game.model.Participant;
@@ -13,7 +14,8 @@ import java.util.Map;
 
 /**
  * Full atelier detail returned by POST /api/ateliers and GET /api/ateliers/{id}. v0.6.0 (spec 006):
- * + tours, scores, winner. v0.7.0 (spec 007): + projectFacts.
+ * + tours, scores, winner. v0.7.0 (spec 007): + projectFacts. v0.8.0 (spec 009): + agentSnapshots;
+ * agentConfigs kept deprecated for legacy ateliers.
  */
 public record AtelierResponse(
     String id,
@@ -28,6 +30,7 @@ public record AtelierResponse(
     List<Card> deck,
     List<SetResolution> sets,
     List<AgentLlmConfig> agentConfigs,
+    List<AgentSnapshot> agentSnapshots,
     List<Leg> legs,
     List<Tour> tours,
     Map<String, Integer> scores,
@@ -48,6 +51,7 @@ public record AtelierResponse(
         atelier.deck(),
         atelier.sets(),
         atelier.agentConfigs(),
+        atelier.agentSnapshots(),
         legs,
         atelier.tours(),
         atelier.scores(),

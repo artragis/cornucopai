@@ -3,14 +3,19 @@ import { computed, ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { getCardCatalog, listAteliers, type AtelierSummaryDto, type CardCatalog, type SetDto } from '../services/atelierApi'
+import { listAgents, type AgentDto } from '../services/agentsApi'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  launch: [payload: { playerCount: number; featureHtml: string; language: string; families: string[]; inheritFactsFrom?: string }]
+  // spec 009 (US2, FR-007): the launch payload carries the selected agent ids, not a player count
+  launch: [payload: { agentIds: string[]; featureHtml: string; language: string; families: string[]; inheritFactsFrom?: string }]
 }>()
 
-const playerCount = ref<number | null>(null)
+// spec 009 (US2): participants are chosen by selecting agents (FR-007/FR-009/FR-010)
+const agents = ref<AgentDto[]>([])
+const agentsError = ref('')
+const selectedAgentIds = ref<string[]>([])
 
 const editor = useEditor({
   extensions: [StarterKit.configure({})],
@@ -38,8 +43,19 @@ watch(() => props.modelValue, (open) => {
   if (open) {
     loadCatalog()
     loadAteliersWithFacts()
+    loadAgents()
   }
 }, { immediate: true })
+
+async function loadAgents() {
+  agentsError.value = ''
+  try {
+    agents.value = await listAgents()
+  } catch (e) {
+    agents.value = []
+    agentsError.value = e instanceof Error ? e.message : String(e)
+  }
+}
 
 async function loadAteliersWithFacts() {
   try {
@@ -100,10 +116,10 @@ const languageOptions = computed(() => catalog.value?.availableLanguages?.length
   : ['fr'])
 
 const canLaunch = computed(() =>
-  (playerCount.value ?? 0) >= 2 && !isFeatureEmpty.value && selectedFamilies.value.length >= 1)
+  selectedAgentIds.value.length >= 2 && !isFeatureEmpty.value && selectedFamilies.value.length >= 1)
 
 const errorMessage = computed(() => {
-  if ((playerCount.value ?? 0) < 2) return 'Il faut au moins 2 joueurs.'
+  if (selectedAgentIds.value.length < 2) return 'Sélectionnez au moins 2 agents (le même agent peut être pris deux fois).'
   if (isFeatureEmpty.value) return 'Décrivez la feature à analyser.'
   if (selectedFamilies.value.length < 1) return 'Sélectionnez au moins une famille de cartes.'
   return ''
@@ -112,7 +128,7 @@ const errorMessage = computed(() => {
 function onLaunch() {
   if (!canLaunch.value) return
   emit('launch', {
-    playerCount: playerCount.value as number,
+    agentIds: [...selectedAgentIds.value],
     featureHtml: featureHtml.value,
     language: language.value,
     families: [...selectedFamilies.value],
@@ -134,15 +150,42 @@ function onClose() {
   >
     <v-card title="Configurer une partie">
       <v-card-text>
-        <v-text-field
-          v-model.number="playerCount"
-          data-testid="player-count-input"
-          label="Nombre de joueurs"
-          type="number"
-          min="2"
+        <!-- spec 009 (US2, FR-007/FR-008): accessible multi-select of agents replaces the
+             player count; the same agent may be selected several times (FR-009) -->
+        <v-autocomplete
+          v-model="selectedAgentIds"
+          data-testid="agent-selector"
+          class="mt-2"
+          label="Agents participants"
+          :items="agents"
+          item-title="agentName"
+          item-value="id"
+          multiple
+          chips
+          closable-chips
           :hint="errorMessage"
           persistent-hint
         />
+        <v-alert
+          v-if="agentsError"
+          type="warning"
+          density="compact"
+          class="mt-2"
+          data-testid="agents-error"
+        >
+          Liste des agents indisponible : {{ agentsError }}
+        </v-alert>
+        <v-alert
+          v-else-if="agents.length === 0"
+          type="info"
+          density="compact"
+          class="mt-2"
+          data-testid="agents-empty"
+        >
+          Aucun agent configuré —
+          <router-link to="/agents" data-testid="agents-empty-link">créez-en un sur la page des agents</router-link>
+          avant de lancer une partie.
+        </v-alert>
         <p class="text-body-2 mt-4 mb-1">
           Feature à analyser (threat modeling)
         </p>

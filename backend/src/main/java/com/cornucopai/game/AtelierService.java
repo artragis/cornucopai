@@ -7,7 +7,6 @@ import com.cornucopai.game.agent.AgentFactory;
 import com.cornucopai.game.card.CardCatalogService;
 import com.cornucopai.game.card.CardDeckService;
 import com.cornucopai.game.llm.AgentConfigResolver;
-import com.cornucopai.game.llm.LlmDefaults;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Participant;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,7 +43,7 @@ public class AtelierService {
       AtelierStore store,
       AgentFactory agentFactory,
       CardCatalogService catalogService,
-      LlmDefaults llmDefaults,
+      AgentStore agentStore,
       @org.eclipse.microprofile.config.inject.ConfigProperty(
               name = "cornucopai.debate.enabled",
               defaultValue = "false")
@@ -53,7 +52,7 @@ public class AtelierService {
         store,
         agentFactory,
         new CardDeckService(catalogService),
-        new AgentConfigResolver(llmDefaults),
+        new AgentConfigResolver(agentStore),
         new Random(),
         debateEnabled);
   }
@@ -86,10 +85,9 @@ public class AtelierService {
 
   public AtelierResponse createAndRun(CreateAtelierRequest request) {
     String id = store.createAtelierDir(store.newAtelierId());
-    // Spec 004 (R-028/R-032): resolve per-player participants + LLM configs (defaults when no
-    // agents array)
-    AgentConfigResolver.Resolved resolved =
-        agentConfigResolver.resolve(request.playerCount(), request.agents());
+    // Spec 009 (US2, FR-007/FR-016/FR-017/FR-020): resolve participants + agent snapshots from
+    // the selected agent ids; participant order is drawn randomly, names are Joueur-N
+    AgentConfigResolver.Resolved resolved = agentConfigResolver.resolve(request.agentIds(), random);
     List<Participant> players = resolved.players();
     // Spec 003 (FR-005/FR-008/FR-015/FR-016): build the real deck from the selected families
     String language =
@@ -104,14 +102,14 @@ public class AtelierService {
             id,
             Instant.now(),
             request.featureHtml(),
-            request.playerCount(),
+            players.size(),
             players,
             List.of(),
             deckResult.deck());
     atelier.setLanguage(language);
     atelier.setSelectedFamilies(families);
     atelier.setSets(deckResult.sets());
-    atelier.setAgentConfigs(resolved.configs()); // FR-012: persisted with the atelier
+    atelier.setAgentSnapshots(resolved.snapshots()); // FR-017: persisted with the atelier
     // Spec 007 (FR-007, R-053, clarification 2026-11-11): optional inheritance of the
     // source atelier's shared project memory (chosen via the UI dropdown)
     if (request.inheritFactsFrom() != null && !request.inheritFactsFrom().isBlank()) {
@@ -126,8 +124,8 @@ public class AtelierService {
           "Atelier %s inherits %d project facts from %s",
           id, source.projectFacts().size(), source.id());
     }
-    // Spec 004 (FR-003): games run on the single LLM agent implementation
-    List<PlayerAgent> agents = agentFactory.createAgents(players, resolved.configs(), id);
+    // Spec 009 (FR-011): games run on the single LLM agent implementation, driven by snapshots
+    List<PlayerAgent> agents = agentFactory.createAgents(players, resolved.snapshots(), id);
     // Spec 007 (review 2026-11-11): seed the agents' shared memory with the atelier's
     // facts (possibly inherited) so they start the game with previous runs' knowledge
     agents.stream()
@@ -137,7 +135,7 @@ public class AtelierService {
         .ifPresent(memory -> memory.setAll(atelier.projectFacts()));
     LOG.infof(
         "Launching atelier %s with %d players, %d real cards from %s (%s)",
-        id, request.playerCount(), deckResult.deck().size(), families, language);
+        id, players.size(), deckResult.deck().size(), families, language);
     Atelier result = new GameMaster(store, random, debateEnabled).runGame(atelier, agents);
     return AtelierResponse.from(result, store.loadLegs(id));
   }

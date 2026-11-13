@@ -1,5 +1,6 @@
 export interface CreateAtelierRequest {
-  playerCount: number
+  /** spec 009 (API v0.8.0, FR-007): one entry per participant = id of a /api/agents agent; min 2, duplicates allowed (FR-009/FR-010). */
+  agentIds: string[]
   featureHtml: string
   /** Chosen language, lowercase; defaults to 'fr' (FR-015). */
   language?: string
@@ -11,7 +12,10 @@ export interface CreateAtelierRequest {
 
 export interface ParticipantDto {
   name: string
-  archetype: 'GRUMPY' | 'HAPPY' | 'GREEDY' | 'PROF'
+  /** spec 009 (API v0.8.0): id of the agent driving this participant. */
+  agentId: string
+  /** @deprecated legacy pre-009 ateliers only (FR-014); absent on new ateliers. */
+  archetype?: 'GRUMPY' | 'HAPPY' | 'GREEDY' | 'PROF'
 }
 
 export interface CardDto {

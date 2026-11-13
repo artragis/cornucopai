@@ -7,7 +7,6 @@ import com.cornucopai.game.card.CardInfoTool;
 import com.cornucopai.game.mcp.McpIdeConfig;
 import com.cornucopai.game.mcp.McpToolProviderFactory;
 import com.cornucopai.game.mcp.MockMcpClient;
-import com.cornucopai.game.model.Archetype;
 import dev.langchain4j.mcp.McpToolProvider;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -31,13 +30,7 @@ class ToolboxWiringMcpTest {
         McpToolProviderFactory.createWithClient(
             McpIdeConfig.defaults(), new MockMcpClient("ide-mcp", List.of("read_file"), false));
     LlmBrain brain =
-        factory.create(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            "Joueur-1",
-            Archetype.GRUMPY,
-            "atelierX",
-            List.of(),
-            provider);
+        factory.create(TestAgents.snapshot("agent-1"), "Joueur-1", "atelierX", List.of(), provider);
     assertThat(brain).isInstanceOf(LangChain4jBrain.class);
     LangChain4jBrain lcb = (LangChain4jBrain) brain;
     assertThat(lcb.tools()).contains(cardTool);
@@ -50,12 +43,7 @@ class ToolboxWiringMcpTest {
         new LlmDefaults("http://localhost:1235/v1", null, null, Duration.ofSeconds(5));
     LlmBrainFactory factory = new LlmBrainFactory("auto", defaults, List.of());
     LlmBrain brain =
-        factory.create(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            "Joueur-1",
-            Archetype.HAPPY,
-            "atelierX",
-            List.of());
+        factory.create(TestAgents.snapshot("agent-1"), "Joueur-1", "atelierX", List.of());
     assertThat(((LangChain4jBrain) brain).mcpToolProvider()).isNull();
   }
 }

@@ -10,7 +10,12 @@ import java.util.Set;
  * <p>Two provider kinds (FR-001): {@link ProviderType#OPENAI_COMPATIBLE} — an OpenAI-compatible
  * base URL (+ optional apiKey/modelName); {@link ProviderType#ACP} — an ACP agent such as {@code
  * github-copilot} or {@code mistral-vibe}.
+ *
+ * @deprecated spec 009 (FR-011/FR-017): the launch path now uses {@link AgentSnapshot} from a
+ *     configurable {@code Agent}; this record is kept ONLY to read legacy {@code atelier.json}
+ *     files (FR-014). It is never written anymore and the ACP path is removed from the game flow.
  */
+@Deprecated
 public record AgentLlmConfig(
     ProviderType providerType,
     String baseUrl,

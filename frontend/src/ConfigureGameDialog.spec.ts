@@ -41,8 +41,31 @@ vi.mock('./services/atelierApi', () => ({
   ]))
 }))
 
+// spec 009 (US2): the dialog fetches the configurable agents for its selector (FR-007)
+vi.mock('./services/agentsApi', () => ({
+  listAgents: vi.fn(async () => ([
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      agentName: 'Analyste',
+      openAiCompatibleUrl: 'http://localhost:1235/v1',
+      apiKeyVar: '',
+      modelName: 'qwen3-coder',
+      personalityPrompt: 'Tu es tatillon.'
+    },
+    {
+      id: '22222222-2222-4222-8222-222222222222',
+      agentName: 'Expert',
+      openAiCompatibleUrl: 'https://api.mistral.ai/v1',
+      apiKeyVar: 'MISTRAL_API_KEY',
+      modelName: 'mistral-large-latest',
+      personalityPrompt: 'Tu es pédagogue.'
+    }
+  ]))
+}))
+
 import ConfigureGameDialog from './components/ConfigureGameDialog.vue'
 import { getCardCatalog } from './services/atelierApi'
+import { listAgents } from './services/agentsApi'
 
 // jsdom lacks visualViewport, required by Vuetify overlay components (v-dialog)
 if (!('visualViewport' in globalThis)) {
@@ -67,14 +90,20 @@ function mountDialog() {
           name: 'VDialog',
           props: ['modelValue'],
           template: '<div class="v-dialog-stub" v-if="modelValue"><slot /></div>'
-        }
+        },
+        RouterLink: { name: 'RouterLink', props: ['to'], template: '<a :href="to"><slot /></a>' }
       }
     }
   })
 }
 
-function playerCountInput(wrapper: ReturnType<typeof mountDialog>) {
-  return wrapper.find('[data-testid="player-count-input"] input')
+const AGENT_A = '11111111-1111-4111-8111-111111111111'
+const AGENT_B = '22222222-2222-4222-8222-222222222222'
+
+/** Emits the v-autocomplete model (array of agent ids) — same pattern as the family checkboxes. */
+async function selectAgents(wrapper: ReturnType<typeof mountDialog>, ids: string[]) {
+  await wrapper.findComponent('[data-testid="agent-selector"]').vm.$emit('update:modelValue', ids)
+  await wrapper.vm.$nextTick()
 }
 
 /** Sets are collapsed by default — open every panel before touching the checkboxes. */
@@ -90,15 +119,19 @@ function checkedInput(wrapper: ReturnType<typeof mountDialog>, testid: string): 
 }
 
 describe('ConfigureGameDialog', () => {
-  it('renders player count, WYSIWYG, language select (default fr) and the collapsible set→familles tree', async () => {
+  it('renders the agent selector, WYSIWYG, language select (default fr) and the collapsible set→familles tree', async () => {
     const wrapper = mountDialog()
     await wrapper.vm.$nextTick()
-    await new Promise((r) => setTimeout(r, 0)) // let the catalog promise resolve
-    expect(wrapper.find('[data-testid="player-count-input"]').exists()).toBe(true)
+    await new Promise((r) => setTimeout(r, 0)) // let the catalog + agents promises resolve
+    // spec 009: the old player-count input is GONE, replaced by the agent selector (FR-007)
+    expect(wrapper.find('[data-testid="player-count-input"]').exists()).toBe(false)
+    const selector = wrapper.find('[data-testid="agent-selector"]')
+    expect(selector.exists()).toBe(true)
+    // accessibility (FR-008): the autocomplete exposes a combobox role for keyboard/AT users
+    expect(selector.find('input').attributes('role')).toBe('combobox')
     expect(wrapper.find('.editor-content').exists()).toBe(true)
     expect(wrapper.find('[data-testid="language-select"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="card-family-selector"]').exists()).toBe(true)
-    // sets are collapsed by default; their checkboxes appear once the panel is open
     expect(wrapper.find('[data-testid="set-panel-webapp"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="set-panel-eop"]').exists()).toBe(true)
     await openAllSets(wrapper)
@@ -108,22 +141,21 @@ describe('ConfigureGameDialog', () => {
     expect(wrapper.find('[data-testid="family-eop:SP"]').exists()).toBe(true)
   })
 
-  it('blocks launch until at least one family is selected', async () => {
+  it('blocks launch until at least 2 agents AND one family are selected (FR-010)', async () => {
     const wrapper = mountDialog()
     await new Promise((r) => setTimeout(r, 0))
-    await playerCountInput(wrapper).setValue(4)
+    await selectAgents(wrapper, [AGENT_A]) // only one agent
     const button = wrapper.find('[data-testid="launch-button"]')
     expect(button.attributes('disabled')).toBeDefined()
     await button.trigger('click')
     expect(wrapper.emitted('launch')).toBeUndefined()
   })
 
-  it('emits launch with playerCount, featureHtml, language=fr and selected families', async () => {
+  it('emits launch with agentIds, featureHtml, language=fr and selected families', async () => {
     const wrapper = mountDialog()
     await new Promise((r) => setTimeout(r, 0))
-    await playerCountInput(wrapper).setValue(4)
+    await selectAgents(wrapper, [AGENT_A, AGENT_B])
     await openAllSets(wrapper)
-    // native array pattern: the checkbox emits the new model-value array
     await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
     const button = wrapper.find('[data-testid="launch-button"]')
     expect(button.attributes('disabled')).toBeUndefined()
@@ -131,11 +163,35 @@ describe('ConfigureGameDialog', () => {
     const events = wrapper.emitted('launch')
     expect(events).toBeTruthy()
     expect(events![0][0]).toEqual({
-      playerCount: 4,
+      agentIds: [AGENT_A, AGENT_B],
       featureHtml: '<p>Feature de test</p>',
       language: 'fr',
       families: ['webapp:VE']
     })
+  })
+
+  // T023 (spec 009, FR-009): the same agent may be selected twice — two players, one agent
+  it('allows selecting the same agent twice (two participants sharing one agent)', async () => {
+    const wrapper = mountDialog()
+    await new Promise((r) => setTimeout(r, 0))
+    await selectAgents(wrapper, [AGENT_A, AGENT_A])
+    await openAllSets(wrapper)
+    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
+    await wrapper.find('[data-testid="launch-button"]').trigger('click')
+    const payload = wrapper.emitted('launch')![0][0] as { agentIds: string[] }
+    expect(payload.agentIds).toEqual([AGENT_A, AGENT_A])
+  })
+
+  // T023 (spec 009, US2 scenario 4): with zero agents configured, an empty state links to /agents
+  it('shows an empty-state with a link to /agents when no agent exists', async () => {
+    vi.mocked(listAgents).mockResolvedValueOnce([])
+    const wrapper = mountDialog()
+    await new Promise((r) => setTimeout(r, 0))
+    const empty = wrapper.find('[data-testid="agents-empty"]')
+    expect(empty.exists()).toBe(true)
+    expect(wrapper.find('[data-testid="agents-empty-link"]').attributes('href')).toBe('/agents')
+    // launch stays blocked
+    expect(wrapper.find('[data-testid="launch-button"]').attributes('disabled')).toBeDefined()
   })
 
   it('renders the checked state on the family checkbox (bug review: visual state was lost)', async () => {
@@ -147,7 +203,6 @@ describe('ConfigureGameDialog', () => {
     await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
     await wrapper.vm.$nextTick()
     expect(checkedInput(wrapper, 'family-webapp:VE').checked).toBe(true)
-    // the checked visual comes from the mdi icon glyph (requires @mdi/font loaded in main.ts)
     expect(wrapper.find('[data-testid="family-webapp:VE"]').html()).toContain('mdi-checkbox-marked')
   })
 
@@ -165,7 +220,7 @@ describe('ConfigureGameDialog', () => {
   it('checking a set selects all its families', async () => {
     const wrapper = mountDialog()
     await new Promise((r) => setTimeout(r, 0))
-    await playerCountInput(wrapper).setValue(2)
+    await selectAgents(wrapper, [AGENT_A, AGENT_B])
     await openAllSets(wrapper)
     await wrapper.findComponent('[data-testid="set-webapp"]').vm.$emit('update:modelValue', true)
     await wrapper.vm.$nextTick()
@@ -203,26 +258,5 @@ describe('ConfigureGameDialog', () => {
     expect(chips.exists()).toBe(true)
     expect(chips.text()).toContain('webapp:VE')
     expect(chips.text()).toContain('eop:SP')
-  })
-
-  it('US2 (spec 007, T035, FR-007): shows the inherit-facts dropdown listing only ateliers with facts', async () => {
-    const wrapper = mountDialog()
-    await new Promise((r) => setTimeout(r, 0))
-    const select = wrapper.find('[data-testid="inherit-facts-select"]')
-    expect(select.exists()).toBe(true)
-  })
-
-  it('US2 (spec 007, T035): launch payload carries inheritFactsFrom only when a source is selected', async () => {
-    const wrapper = mountDialog()
-    await new Promise((r) => setTimeout(r, 0))
-    await openAllSets(wrapper)
-    await wrapper.findComponent('[data-testid="family-webapp:VE"]').vm.$emit('update:modelValue', ['webapp:VE'])
-    await wrapper.findComponent({ name: 'VTextField' }).setValue(2)
-    await wrapper.vm.$nextTick()
-    // no source selected -> payload has no inheritFactsFrom
-    await wrapper.find('[data-testid="launch-button"]').trigger('click')
-    await wrapper.vm.$nextTick()
-    const payload = wrapper.emitted('launch')?.[0]?.[0] as Record<string, unknown>
-    expect('inheritFactsFrom' in payload).toBe(false)
   })
 })

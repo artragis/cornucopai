@@ -38,7 +38,8 @@ const scoreRows = computed(() => {
   const scores = a.scores ?? {}
   return a.players.map((p) => ({
     name: p.name,
-    archetype: p.archetype,
+    // spec 009: new ateliers show the driving agent id; legacy ones still show the archetype
+    agentLabel: p.agentId ? `agent ${p.agentId.slice(0, 8)}…` : (p.archetype ?? ''),
     score: scores[p.name] ?? 0,
     isWinner: (a.winner ?? []).includes(p.name)
   }))
@@ -122,7 +123,7 @@ function validationColor(validation: string): string {
                     :key="row.name"
                   >
                     <td>{{ row.name }}</td>
-                    <td>{{ row.archetype }}</td>
+                    <td>{{ row.agentLabel }}</td>
                     <td><strong>{{ row.score }}</strong></td>
                     <td>
                       <v-chip

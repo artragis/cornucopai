@@ -13,20 +13,20 @@ import org.jboss.logging.Logger;
 
 /**
  * {@link LlmBrain} backed by a per-agent LangChain4j {@code AiServices} proxy (R-021): an {@link
- * OpenAiChatModel} built from the agent's own {@link AgentLlmConfig} (custom base URL, optional API
- * key — null means NO Authorization header, verified in DefaultOpenAiClient — model name, timeout),
- * a {@link MessageWindowChatMemory} private to this agent, the system prompt, and the toolbox
- * ({@code CardInfoTool} from US3).
+ * OpenAiChatModel} built from the agent's {@link AgentSnapshot} (spec 009: {@code
+ * openAiCompatibleUrl} as base URL, {@code modelName}, resolved API key — null means NO
+ * Authorization header, verified in DefaultOpenAiClient — timeout from the server defaults), a
+ * {@link MessageWindowChatMemory} private to this agent, the system prompt (base rules + the
+ * agent's {@code personalityPrompt}, FR-012), and the toolbox ({@code CardInfoTool}).
  *
- * <p>Memory policy (id = {@code <atelierId>/<agentName>}, window 40) and the per-archetype system
- * prompt are finalized by US4 (T039/T040); until then a placeholder prompt and a smaller window are
- * used.
+ * <p>Memory policy: id = {@code <atelierId>/<agentName>}, window 40 (R-025).
  */
 public class LangChain4jBrain implements LlmBrain {
 
   private static final Logger LOG = Logger.getLogger(LangChain4jBrain.class);
 
-  private final AgentLlmConfig config;
+  private final AgentSnapshot snapshot;
+  private final String apiKey;
   private final String agentName;
   private final String atelierId;
   private final LlmDefaults defaults;
@@ -51,24 +51,27 @@ public class LangChain4jBrain implements LlmBrain {
   private volatile PlayerAiService voteAi;
 
   public LangChain4jBrain(
-      AgentLlmConfig config,
+      AgentSnapshot snapshot,
+      String apiKey,
       String agentName,
       String atelierId,
       LlmDefaults defaults,
       String systemPrompt,
       List<Object> tools) {
-    this(config, agentName, atelierId, defaults, systemPrompt, tools, null);
+    this(snapshot, apiKey, agentName, atelierId, defaults, systemPrompt, tools, null);
   }
 
   public LangChain4jBrain(
-      AgentLlmConfig config,
+      AgentSnapshot snapshot,
+      String apiKey,
       String agentName,
       String atelierId,
       LlmDefaults defaults,
       String systemPrompt,
       List<Object> tools,
       dev.langchain4j.service.tool.ToolProvider mcpToolProvider) {
-    this.config = config;
+    this.snapshot = snapshot;
+    this.apiKey = apiKey;
     this.agentName = agentName;
     this.atelierId = atelierId;
     this.defaults = defaults;
@@ -85,17 +88,61 @@ public class LangChain4jBrain implements LlmBrain {
   private OpenAiChatModel.OpenAiChatModelBuilder modelBuilder() {
     OpenAiChatModel.OpenAiChatModelBuilder modelBuilder =
         OpenAiChatModel.builder()
-            .baseUrl(config.baseUrl())
+            .baseUrl(snapshot.openAiCompatibleUrl()) // spec 009: per-agent endpoint (FR-011)
             .modelName(
-                config.modelName() == null || config.modelName().isBlank()
+                snapshot.modelName() == null || snapshot.modelName().isBlank()
                     ? "default"
-                    : config.modelName())
+                    : snapshot.modelName())
             .timeout(defaults.timeout())
-            .maxRetries(1);
-    if (config.apiKey() != null && !config.apiKey().isBlank()) {
-      modelBuilder.apiKey(config.apiKey());
+            .maxRetries(1)
+            // observed 2026-11-11: some servers (LM Studio/gemma) return message content as an
+            // array of parts, which langchain4j-open-ai 1.23.0 cannot deserialize — sanitize it
+            .httpClientBuilder(new SanitizingHttpClientBuilder());
+    // FR-006: the key was resolved from the apiKeyVar env var by LlmBrainFactory; null = no auth
+    if (apiKey != null && !apiKey.isBlank()) {
+      modelBuilder.apiKey(apiKey);
     }
     return modelBuilder;
+  }
+
+  /**
+   * Observed 2026-11-11 on a real run: the model called {@code get_tour_info} / MCP tools from the
+   * VOTE prompt, but the vote proxy had no tools registered, so langchain4j's default {@code
+   * HallucinatedToolNameStrategy.THROW_EXCEPTION} failed the whole vote call. Two fixes: (1) every
+   * proxy (main AND vote) gets the full toolbox + MCP provider — the vote prompt's branch (b)
+   * requires factual MCP verification (R-061); (2) a lenient hallucinated-tool strategy returns an
+   * explanatory tool result instead of throwing, so one bad tool name never kills the call
+   * (non-blocking fallback, spec 004 FR-013).
+   */
+  static final java.util.function.Function<
+          dev.langchain4j.agent.tool.ToolExecutionRequest,
+          dev.langchain4j.data.message.ToolExecutionResultMessage>
+      LENIENT_HALLUCINATED_TOOL =
+          request ->
+              dev.langchain4j.data.message.ToolExecutionResultMessage.from(
+                  request,
+                  "L'outil '"
+                      + request.name()
+                      + "' n'existe pas dans ta toolbox. N'invente pas d'outil : utilise "
+                      + "uniquement ceux réellement disponibles (get_tour_info, get_project_facts, "
+                      + "add_project_fact, et les outils MCP), ou réponds sans outil.");
+
+  /** Common AiServices builder: model, system prompt, memory, toolbox, MCP provider, limits. */
+  private AiServices<PlayerAiService> baseAiServiceBuilder() {
+    var builder =
+        AiServices.builder(PlayerAiService.class)
+            .chatModel(modelBuilder().build())
+            .systemMessageProvider(id -> systemPrompt)
+            .chatMemory(chatMemory)
+            // observed 2026-11-11: agents chain many MCP calls before answering
+            .maxToolCallingRoundTrips(100)
+            .hallucinatedToolNameStrategy(LENIENT_HALLUCINATED_TOOL)
+            .tools(tools);
+    if (mcpToolProvider != null) {
+      // spec 007 US1 (R-046): MCP tools alongside @Tool tools
+      builder.toolProvider(mcpToolProvider);
+    }
+    return builder;
   }
 
   private PlayerAiService ai() {
@@ -104,17 +151,7 @@ public class LangChain4jBrain implements LlmBrain {
       synchronized (this) {
         local = ai;
         if (local == null) {
-          var builder =
-              AiServices.builder(PlayerAiService.class)
-                  .chatModel(modelBuilder().build())
-                  .systemMessageProvider(id -> systemPrompt)
-                  .chatMemory(chatMemory)
-                  .tools(tools);
-          if (mcpToolProvider != null) {
-            builder.toolProvider(
-                mcpToolProvider); // spec 007 US1 (R-046): MCP tools alongside @Tool tools
-          }
-          local = builder.build();
+          local = baseAiServiceBuilder().build();
           ai = local;
         }
       }
@@ -123,9 +160,10 @@ public class LangChain4jBrain implements LlmBrain {
   }
 
   /**
-   * Dedicated vote proxy (R-040): same endpoint/memory/system prompt, but the model is built with
-   * {@code maxCompletionTokens(VOTE_MAX_TOKENS)} and NO tools — the vote must be a bare YES/NO
-   * JSON, never reasoning.
+   * Dedicated vote proxy (R-040): same endpoint/memory/system prompt and SAME toolbox as the main
+   * proxy — since R-061 the vote prompt's branch (b) orders a factual MCP verification, so the vote
+   * path must have the tools (observed 2026-11-11: without them every vote failed with "no such
+   * tool exists"). Output stays the bare decision-tree JSON.
    */
   private PlayerAiService voteAi() {
     PlayerAiService local = voteAi;
@@ -133,12 +171,7 @@ public class LangChain4jBrain implements LlmBrain {
       synchronized (this) {
         local = voteAi;
         if (local == null) {
-          local =
-              AiServices.builder(PlayerAiService.class)
-                  .chatModel(modelBuilder().build())
-                  .systemMessageProvider(id -> systemPrompt)
-                  .chatMemory(chatMemory)
-                  .build();
+          local = baseAiServiceBuilder().build();
           voteAi = local;
         }
       }
@@ -218,5 +251,15 @@ public class LangChain4jBrain implements LlmBrain {
   /** Spec 007 US1 test accessor (T013, SC-001). */
   public dev.langchain4j.service.tool.ToolProvider mcpToolProvider() {
     return mcpToolProvider;
+  }
+
+  /** Spec 009 (US3) test accessors: the brain is built from the agent snapshot + resolved key. */
+  public AgentSnapshot snapshot() {
+    return snapshot;
+  }
+
+  /** The API key resolved from the apiKeyVar env var (null = no auth, FR-006). */
+  public String apiKey() {
+    return apiKey;
   }
 }

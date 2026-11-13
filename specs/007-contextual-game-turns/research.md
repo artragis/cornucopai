@@ -345,3 +345,56 @@ they start at R-045. LangChain4j API references verified against the official do
 - **Alternatives considered**: (a) persist only at game end — rejected: a crashed
   run would lose all discoveries; (b) pass the memory into `GameMaster`'s constructor —
   rejected: the agents already hold it, the accessor avoids a second wiring path.
+
+## R-063 — Real-run fix: sanitize array `content` in chat-completion responses (observed 2026-11-11)
+
+- **Decision**: some OpenAI-compatible servers (observed: LM Studio `localhost:1235`, gemma)
+  return `choices[].message.content` as an ARRAY of parts; langchain4j-open-ai 1.23.0 types
+  `AssistantMessage.content` as `String` and fails with `MismatchedInputException ... from
+  Array value`. Fix: `SanitizingHttpClientBuilder` (wraps the default JDK
+  `HttpClientBuilder`, set via `OpenAiChatModel.builder().httpClientBuilder(...)`) rewrites
+  array `content` into the joined text of its text parts for `/chat/completions` responses
+  only; any parsing problem returns the original body untouched. Unit tests:
+  `SanitizingHttpClientBuilderTest` (array→text, string untouched, non-chat untouched,
+  broken JSON passthrough, async path).
+- **Rationale**: the failure killed every LLM call at deserialization; fixing it at the HTTP
+  layer keeps langchain4j pinned and touches no game logic.
+- **Alternatives considered**: (a) upgrade langchain4j to a version handling array content —
+  none available on the 1.23.0 line pinned by quarkus-langchain4j 1.15.0; (b) ask the user to
+  reconfigure LM Studio — not robust, the next server may do the same.
+
+## R-064 — Real-run fix: tools on the vote proxy + lenient hallucinated-tool strategy + tool-round cap (observed 2026-11-11)
+
+- **Decision**: (1) `voteAi()` previously built its AiService with NO tools and NO MCP
+  provider, while the vote prompt (R-061) orders factual verification via `get_tour_info` /
+  MCP tools — every vote call then failed with « The LLM is trying to execute the
+  'get_tour_info' tool, but no such tool exists ». Both proxies (`ai()` and `voteAi()`) now
+  share one `baseAiServiceBuilder()` with the full toolbox + MCP provider. (2)
+  `hallucinatedToolNameStrategy` is set to `LENIENT_HALLUCINATED_TOOL`: instead of throwing,
+  it returns an explanatory `ToolExecutionResultMessage` so one bad tool name never kills the
+  call (non-blocking fallback, spec 004 FR-013). (3) `maxToolCallingRoundTrips(100)` on both
+  proxies (agents chain many MCP lookups; the old deprecated `maxSequentialToolsInvocations`
+  is not used). Test: `HallucinatedToolStrategyTest`.
+- **Rationale**: the vote branch (b) is only meaningful if the voter can actually call the
+  tools; a hallucinated tool name must degrade to a retry-with-explanation, not an exception.
+- **Alternatives considered**: (a) keep vote tool-free and strip tool mentions from the vote
+  prompt — rejected: it would contradict R-061/FR-009 (factual MCP verification at vote time).
+
+## R-065 — Real-run fix: `@CreatedAware` on `PlayerAiService` (observed 2026-11-11)
+
+- **Decision**: annotate the programmatic AiService interface `PlayerAiService` with
+  `io.quarkiverse.langchain4j.CreatedAware`. Inside Quarkus, `AiServices.builder(...).build()`
+  goes through `QuarkusAiServicesFactory`, whose `build()` looks the class up in the
+  build-time AiService metadata and otherwise throws « Quarkus was not able to determine
+  class 'com.cornucopai.game.llm.PlayerAiService' as an AiService at build time. Consider
+  annotating the class with '@CreatedAware' » — exactly the error seen on a real run at
+  `LangChain4jBrain.voteAi`. The annotation registers the metadata explicitly (the
+  extension also auto-registers literal `AiServices.builder(X.class)` call sites, but the
+  annotation makes it robust to refactoring). Regression test:
+  `PlayerAiServiceQuarkusBuildTest` (@QuarkusTest) performs the same `build()` inside the
+  real Quarkus runtime with a `DisabledChatModel`.
+- **Rationale**: programmatic AiServices are our design (per-agent model/memory/tools); the
+  annotation is the supported way to make them known to Quarkus at build time.
+- **Alternatives considered**: (a) declare PlayerAiService as a CDI bean with
+  `@RegisterAiService` and inject it — rejected: we need one proxy per agent with its own
+  model/memory/tools, CDI singletons don't fit.

@@ -6,9 +6,10 @@ import com.cornucopai.game.agent.AgentFactory;
 import com.cornucopai.game.agent.LlmPlayerAgent;
 import com.cornucopai.game.card.CardCatalogService;
 import com.cornucopai.game.card.CardDeckService;
-import com.cornucopai.game.llm.AgentLlmConfig;
+import com.cornucopai.game.llm.AgentSnapshot;
 import com.cornucopai.game.llm.LlmBrainFactory;
 import com.cornucopai.game.llm.LlmDefaults;
+import com.cornucopai.game.llm.TestAgents;
 import com.cornucopai.game.model.Archetype;
 import com.cornucopai.game.model.Atelier;
 import com.cornucopai.game.model.Participant;
@@ -50,10 +51,8 @@ class SingleFamilyLlmGameTest {
         List.of(
             new Participant("Joueur-1", Archetype.GRUMPY),
             new Participant("Joueur-2", Archetype.HAPPY));
-    List<AgentLlmConfig> configs =
-        List.of(
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"),
-            AgentLlmConfig.defaultOpenAiCompatible("http://localhost:1235/v1"));
+    List<AgentSnapshot> snapshots =
+        List.of(TestAgents.snapshot("agent-1"), TestAgents.snapshot("agent-2"));
     LlmBrainFactory brainFactory =
         new LlmBrainFactory(
             "fake",
@@ -62,12 +61,12 @@ class SingleFamilyLlmGameTest {
     AgentFactory agentFactory = new AgentFactory(brainFactory);
 
     String id = store.createAtelierDir(store.newAtelierId());
-    List<PlayerAgent> agents = agentFactory.createAgents(players, configs, id);
+    List<PlayerAgent> agents = agentFactory.createAgents(players, snapshots, id);
     assertThat(agents).allSatisfy(a -> assertThat(a).isInstanceOf(LlmPlayerAgent.class));
 
     Atelier atelier =
         new Atelier(id, Instant.now(), "<p>feature</p>", 2, players, List.of(), deckResult.deck());
-    atelier.setAgentConfigs(configs);
+    atelier.setAgentSnapshots(snapshots);
     Atelier result = new GameMaster(store, random).runGame(atelier, agents);
 
     // bounded: 2 cards -> at most 2 legs (FR-014, SC-005)
@@ -97,7 +96,7 @@ class SingleFamilyLlmGameTest {
         });
     // agentConfigs persisted with the atelier (FR-012)
     Atelier persisted = store.loadAtelier(id).orElseThrow();
-    assertThat(persisted.agentConfigs()).isEqualTo(configs);
+    assertThat(persisted.agentSnapshots()).isEqualTo(snapshots);
     assertThat(result.finishedAt()).isNotNull();
   }
 }

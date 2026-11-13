@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cornucopai.local/schemas/atelier-schema.json",
+  "title": "Atelier",
+  "description": "atelier.json persisted per game (spec 009 v0.8.0 delta over spec 007 v0.7.0). Changes: players[] gains agentId (archetype legacy-only), new agentSnapshots[] index-aligned with players[] (FR-017), agentConfigs[] deprecated (read-only legacy). All other fields (legs, tours, scores, deck, sets, projectFacts…) unchanged from v0.7.0.",
+  "type": "object",
+  "required": ["id", "createdAt", "featureHtml", "players", "turnOrder", "language", "selectedFamilies", "deck", "agentSnapshots"],
+  "properties": {
+    "id": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "featureHtml": { "type": "string" },
+    "playerCount": {
+      "type": "integer",
+      "deprecated": true,
+      "description": "Legacy pre-009 field; equals players.length"
+    },
+    "players": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "agentId"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Joueur-N, N = position after the random launch shuffle (FR-016/FR-020)"
+          },
+          "agentId": { "type": "string", "format": "uuid" },
+          "archetype": {
+            "type": "string",
+            "enum": ["GRUMPY", "HAPPY", "GREEDY", "PROF"],
+            "deprecated": true,
+            "description": "Legacy only: readable from pre-009 ateliers (FR-014), never written anymore"
+          }
+        }
+      }
+    },
+    "agentSnapshots": {
+      "type": "array",
+      "description": "Snapshot of each player's agent config at launch, index-aligned with players[] (FR-017). Never contains the API key value.",
+      "items": {
+        "type": "object",
+        "required": ["id", "agentName", "openAiCompatibleUrl", "modelName", "personalityPrompt"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "agentName": { "type": "string" },
+          "openAiCompatibleUrl": { "type": "string", "pattern": "^https?://" },
+          "apiKeyVar": {
+            "type": "string",
+            "description": "Env var NAME only (empty = no key); key value resolved at runtime via getenv, never persisted (FR-006)"
+          },
+          "modelName": { "type": "string" },
+          "personalityPrompt": { "type": "string" }
+        }
+      }
+    },
+    "agentConfigs": {
+      "type": "array",
+      "deprecated": true,
+      "description": "Spec-004 per-player LLM configs (providerType/baseUrl/apiKey/modelName/acpProvider). Readable for legacy ateliers, no longer written. NOTE: legacy files may contain an apiKey value; new code must never write it."
+    },
+    "turnOrder": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Player names in play order; first entry = first leader (random draw at launch, FR-020)"
+    },
+    "language": { "type": "string" },
+    "selectedFamilies": { "type": "array", "items": { "type": "string" } },
+    "deck": { "type": "array" }
+  }
+}

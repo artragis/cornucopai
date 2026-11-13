@@ -27,8 +27,7 @@ class PromptInjectionTest {
           new ProjectFact("fait " + i, "Joueur-1", i, Instant.parse("2026-11-11T10:00:00Z")));
     }
     LlmPlayerAgent agent =
-        new LlmPlayerAgent(
-            "Joueur-1", Archetype.GRUMPY, new FakeLlmBrain(), new LegContext("atelierX"), memory);
+        new LlmPlayerAgent("Joueur-1", new FakeLlmBrain(), new LegContext("atelierX"), memory);
     Leg leg = new Leg("VE2", "scénario", "explication");
     Participant cardPlayer = new Participant("Joueur-2", Archetype.HAPPY);
 
@@ -47,8 +46,7 @@ class PromptInjectionTest {
   @Test
   void votePromptWithoutMemoryHasNoFactsSection() {
     LlmPlayerAgent agent =
-        new LlmPlayerAgent(
-            "Joueur-1", Archetype.GRUMPY, new FakeLlmBrain(), new LegContext("atelierX"));
+        new LlmPlayerAgent("Joueur-1", new FakeLlmBrain(), new LegContext("atelierX"));
     Leg leg = new Leg("VE2", "scénario", "explication");
     String prompt = agent.votePromptWithFacts(leg, new Participant("Joueur-2", Archetype.HAPPY));
     assertThat(prompt).doesNotContain("FAITS DÉCOUVERTS");
