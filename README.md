@@ -90,3 +90,38 @@ for the frontend) on every push and pull request.
 Feature artifacts live under `specs/` (spec.md, plan.md, research.md, tasks.md,
 quickstart.md, contracts/). Current feature: `specs/003-card-set-selection/`.
 The project constitution is at `.specify/memory/constitution.md` (v1.3.0).
+
+## About
+
+### Why is there some french here?
+
+I started this project as a test of "spec-kit flow" and a toy project for my own knowledge of langchain4j & acp sdk.
+I am french and when I prompted my code harness I did it in french. Hence the mix of french and english.
+
+### Why the history talks about "billet" or "diary"
+
+As it was my first real project with spec-kit and mainly vibe coding, I took note and wrote a blog article that I posted in zeste de savoir websize. 
+On this website blog articles are called "billet" or "tribune libre". The article was written by hand but I wanted to see what article would have been written if I told AI to do so. That's what the history shows. Once the experiment is over, I removed every elements of it.
+
+### Why java?
+
+Because I want something I know and that was not python. I didn't have time to both learn a new language and experiment vibe coding.
+So I only had go, c#, php and java left. A dice decided. Java it was.
+
+### Why vuejs and vuetify?
+
+Sorry I did not take notes for why I chose this one. Perhaps it was just my mood at the time, after all vuejs is the last framework I used in the company I work for and for zestedesavoir we don't use framework. Perhaps I secretly hoped it would magically create a useable UI. It didn't.
+
+### Next steps?
+
+- reduce call to models to reduce cost. Today on a real project (zestedesavoir.com), with two suits, 4 players 
+  - mistral large 2 times
+  - deepseek flash once
+  - google/gemma-4-26b-a4b
+  the full run cost me 4€ of API credit. I will explore more way to do this.
+- Calling code harnesses (first will be github-copilot, junie-cli and mistral-vibe as first citizen as I personaly use them) through ACP
+- Once the cornucopia game is over, summarize everything in one document/set of task
+- Start a game as command line?
+- Anything else that comes to me after that.
+- Anything else the community (if it exists?) proposes.
+- A real UI?

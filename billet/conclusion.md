@@ -1,0 +1,16 @@
+### Bilan : trois retours d’expérience
+
+**LangChain4j** se révèle très commode pour orchestrer ce genre de projet : les *AI Services* déclaratifs, les outils exposés par de simples annotations `@Tool` (`get_card_info`, `get_tour_info`, `get/add_project_facts`), et le branchement d’outils MCP à côté — le tout sur Quarkus via l’extension Quarkiverse. La leçon du run complet est claire : **ce ne sont pas les débats qui manquent, ce sont les outils**. Tant que les agents ne font que du prompting pur, ils inventent des attaques sur des `object_id` entiers et se font valider avec aplomb ; dès qu’ils peuvent chercher dans le code (MCP) et partager une mémoire de faits vérifiés, les scénarios non applicables sont rejetés avec des justifications fichier par ligne — et des vrais points de sécurité remontent (ici, une vue `FeaturedRequestedUpdate` exposée sans mixin de connexion).
+
+**Les LLM auto-hébergés** fonctionnent, mais avec des compromis très nets. Un modèle de ~26–37 milliards de paramètres sur machine locale produit des réponses de qualité — parfois meilleures qu’attendu — mais à ~12 tokens/seconde, une partie complète prend facilement 50 minutes à 1 h 40, avec des timeouts dès qu’une réponse dépasse une minute. Le plus rapide (`liquid/lfm2-24b-a2b`) ne fait aucun appel d’outil ; le plus lent (`qwen/qwen3.8-27b`) accumule les fautes de français (« beau coup » pour « beaucoup ») ; le plus qualitatif (`gemma-4-26b-a4b`) finit par dériver en anglais. Pour ce genre de besoin —raisonner vite sur des échanges courts— un modèle local de taille moyenne suffit largement, et le recours à l’API (ici ~4 € la partie complète, inclus dans l’abonnement) se justifie dès qu’on veut de la profondeur.
+
+**Le vibecoding avec spec-kit** tient ses promesses quand la feature a une histoire à raconter : pour le moteur du jeu, `specify → plan → tasks → implement` produisait des artefacts cohérents, test-first compris. Pour un simple bootstrap, le cérémonial des *user stories* paraît verbeux — mais on ne bootstrappe qu’une fois. Les vraies frictions sont ailleurs : les demandes de permission incessantes (lourdes même pour un projet jouet), la relecture d’artefacts verbeux (plus fastidieuse que celle du code), et les contournements d’agents quand ils butent sur un bug (la checkbox non cochée, « réparée » par des chips ailleurs). La revue de code intégrée à l’IDE (JetBrains Air dans IntelliJ 2026.3) compense largement : plusieurs agents en parallèle, commentaires attachés, corrections ciblées.
+
+### Et après ?
+
+Plusieurs chantiers ouverts : passer à un vrai débat d’agents via l’API Vibe (ACP) plutôt qu’en local, creuser les workflows et débats de LangChain4j pour structurer les tours, et décider si un outil de recherche dans les issues et le forum de ZdS vaut le coup — les spams récents rendent le scénario « attaque par dictionnaire » moins théorique qu’il n’y paraît. Enfin, la promesse de départ : comparer ce billet, écrit de ma main, avec le texte que l’IA produira quand le projet sera terminé.
+
+Le code, les specs et toutes les parties jouées (les `ateliers/*.json`) sont dans le dépôt du projet — n’hésitez pas à y jeter un œil, ne serait-ce que pour voir ce que quatre agents peuvent sortir sur une feature de ZdS.
+
+*[ACP]: Agent Communication Protocol*
+*[ZdS]: Zeste de Savoir*

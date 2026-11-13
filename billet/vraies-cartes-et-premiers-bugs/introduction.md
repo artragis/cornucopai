@@ -1,0 +1,1 @@
+Passage aux vraies cartes Cornucopia dans le jeu : sélection des familles au démarrage de la partie, distribution des cartes du dépôt OWASP — et les deux premiers vrais bugs du projet, dont un que l’agent a choisi de contourner plutôt que de corriger.

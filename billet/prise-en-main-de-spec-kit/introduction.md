@@ -1,0 +1,1 @@
+Comment on démarre un projet neuf quand un agent IA pilote le clavier : le bootstrap avec [spec-kit](https://github.com/github/spec-kit), les premiers artefacts générés, et le vibecoding de la première vraie feature — avec ses frictions (permissions, revue de code) et ses surprises (le code en français).

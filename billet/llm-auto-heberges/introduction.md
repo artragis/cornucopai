@@ -1,0 +1,1 @@
+Faire tourner les agents avec des modèles locaux : un premier test grandeur nature (50 minutes, quatre agents, un beau « théâtre » de sécurité), un benchmark de quatre LLM auto-hébergés, une anecdote d’aplomb sur une carte « ace », et un essai infructueux de débat avant le vote.

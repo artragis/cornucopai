@@ -1,6 +1,70 @@
 {
-  "title": "CornucopAI — un playground d'agents IA autour de Cornucopia (threat modeling)",
-  "description": "Journal de bord du projet CornucopAI : bootstrapper un backend Quarkus/Java 25/LangChain4j et un frontend Vue 3/Vuetify avec un workflow spec-kit, et expérimenter des agents IA qui jouent à Cornucopia pour faire du threat modeling.",
+  "version": 2.1,
+  "object": "container",
+  "slug": "cornucopai-journal-de-bord",
+  "title": "CornucopAI : vibecoder avec spec-kit,",
+  "description": "Retour d'expérience du projet CornucopAI : bootstrapper un backend Quarkus/LangChain4j et un frontend Vue 3 avec un workflow spec-kit piloté par un agent IA, puis faire jouer des agents LLM (en local ou via API) à Cornucopia pour faire du threat modeling — notamment sur Zeste de Savoir lui-même.",
   "type": "OPINION",
-  "licence": "CC BY"
+  "licence": "CC BY",
+  "introduction": "introduction.md",
+  "conclusion": "conclusion.md",
+  "ready_to_publish": true,
+  "children": [
+    {
+      "object": "container",
+      "slug": "prise-en-main-de-spec-kit",
+      "title": "Prise en main de spec-kit et vibecoding de la première feature",
+      "introduction": "prise-en-main-de-spec-kit/introduction.md",
+      "children": [
+        {
+          "object": "extract",
+          "slug": "bootstrap-et-premiere-feature",
+          "title": "Bootstrap, première feature, revue de code dans l'IDE",
+          "text": "prise-en-main-de-spec-kit/bootstrap-et-premiere-feature.md"
+        }
+      ]
+    },
+    {
+      "object": "container",
+      "slug": "vraies-cartes-et-premiers-bugs",
+      "title": "Les vraies cartes, les premiers bugs et le contournement",
+      "introduction": "vraies-cartes-et-premiers-bugs/introduction.md",
+      "children": [
+        {
+          "object": "extract",
+          "slug": "selection-des-cartes-et-contournement",
+          "title": "Sélection des familles de cartes et contournement d'un bug front",
+          "text": "vraies-cartes-et-premiers-bugs/selection-des-cartes-et-contournement.md"
+        }
+      ]
+    },
+    {
+      "object": "container",
+      "slug": "llm-auto-heberges",
+      "title": "Des LLM auto-hébergés au banc d'essai",
+      "introduction": "llm-auto-heberges/introduction.md",
+      "children": [
+        {
+          "object": "extract",
+          "slug": "banc-essai-llm-locaux",
+          "title": "Premier test local, benchmark de quatre modèles, et leçons",
+          "text": "llm-auto-heberges/banc-essai-llm-locaux.md"
+        }
+      ]
+    },
+    {
+      "object": "container",
+      "slug": "run-complet-contre-zds",
+      "title": "Un run complet contre ZdS : agents outillés et 4 € d'API",
+      "introduction": "run-complet-contre-zds/introduction.md",
+      "children": [
+        {
+          "object": "extract",
+          "slug": "deroulement-et-exemples",
+          "title": "Déroulement de la partie et exemples tirés de l'atelier",
+          "text": "run-complet-contre-zds/deroulement-et-exemples.md"
+        }
+      ]
+    }
+  ]
 }

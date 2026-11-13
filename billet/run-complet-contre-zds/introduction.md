@@ -1,0 +1,1 @@
+Le run complet : une partie entière jouée par quatre agents (trois via l’API Mistral, un en local) contre une vraie feature de Zeste de Savoir, avec des agents outillés qui vérifient leurs scénarios dans le code. Coût de la partie : environ 4 € d’API Mistral — inclus dans l’abonnement Pro.
