@@ -79,28 +79,6 @@ Complexity MUST be justified in writing when it is introduced.
   debugger, e.g. port 5005 via `./mvnw quarkus:dev`) to facilitate development
   and debugging. No build or configuration change may remove this ability.
 
-## Project Diary — Zeste de Savoir Billet
-As decisions are made and lessons are learned throughout the project (LangChain4j
-usage, agent orchestration, spec-kit workflow, secure development), the team MUST
-incrementally draft passages of a billet (blog post) intended for publication on
-Zeste de Savoir. The billet MUST follow the zmarkdown norms and the billet's
-`manifest.json` with `type=OPINION`.
-
-The billet is built around the following sources and goals:
-- Sources: the Zeste de Savoir article on running a threat-modeling workshop with
-  Cornucopia (articles/5088); the real difficulties of organizing threat-modeling
-  workshops; noteworthy critical vulnerabilities in the news (e.g. the Linux
-  kernel flaw present since 2016); and the debate on AI in publishing that took
-  place on Zeste de Savoir.
-- Goals: improve mastery of LangChain concepts; test a spec-kit-style workflow
-  end-to-end starting from a fresh project; compare without prejudice a
-  human-written billet with an AI-written one; observe the evolution of AI in
-  secure development beyond the spectacular vulnerability discovery/fixing demos.
-
-Each significant decision or learning MUST be captured as a diary passage at the
-time it happens, so the billet is assembled progressively rather than written
-retrospectively.
-
 ## Governance
 This constitution supersedes all other practices and conventions in the project.
 Amendments require: a written proposal, review by all active contributors, a
